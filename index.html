@@ -1,0 +1,2131 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TradeDesk v5 — MT4 · MT5 · Firebase Realtime</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<style>
+:root {
+  --bg:        #050810;
+  --bg2:       #080c14;
+  --surface:   #0b1120;
+  --surface2:  #0e1628;
+  --surface3:  #121d33;
+  --border:    #162035;
+  --border2:   #1d2d4a;
+  --border3:   #243660;
+  --green:     #00f5b0;
+  --green2:    #00c880;
+  --red:       #ff3060;
+  --cyan:      #00d8ff;
+  --cyan2:     #0096cc;
+  --yellow:    #ffc400;
+  --purple:    #8b5cf6;
+  --orange:    #ff7a00;
+  --text:      #c8ddf5;
+  --text2:     #6a89b0;
+  --text3:     #2d4265;
+  --live:      #00ff88;
+  --fb-orange: #ff6d00;
+  --glow-c:    rgba(0,216,255,0.15);
+  --glow-g:    rgba(0,245,176,0.12);
+  --font-mono: 'Space Mono', monospace;
+  --font-body: 'Space Grotesk', sans-serif;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  font-family:var(--font-body);
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* scanline subtle effect */
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,216,255,.012) 3px,rgba(0,216,255,.012) 4px);
+  pointer-events:none;z-index:9998;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:3px;height:3px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border3);border-radius:2px;}
+::-webkit-scrollbar-thumb:hover{background:var(--border2);}
+
+/* ══════════════ TOPBAR ══════════════ */
+.topbar {
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 28px;height:58px;
+  background:rgba(11,17,32,0.95);
+  border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:200;
+  backdrop-filter:blur(20px);
+}
+.topbar::after{
+  content:'';
+  position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--cyan2),var(--purple),transparent);
+  opacity:.4;
+}
+
+.logo{display:flex;align-items:center;gap:12px;text-decoration:none;}
+.logo-mark{
+  width:36px;height:36px;
+  background:linear-gradient(135deg,var(--cyan),var(--purple));
+  border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:700;color:#fff;
+  font-family:var(--font-mono);letter-spacing:-1px;
+  box-shadow:0 0 20px rgba(0,216,255,.25);
+  position:relative;overflow:hidden;
+}
+.logo-mark::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.15),transparent);}
+.logo-text{line-height:1;}
+.logo-name{font-size:17px;font-weight:700;letter-spacing:-.3px;color:var(--text);}
+.logo-name span{color:var(--cyan);}
+.logo-ver{font-size:9px;color:var(--text3);font-family:var(--font-mono);letter-spacing:2px;margin-top:1px;}
+
+.topbar-center{display:flex;align-items:center;gap:8px;}
+.nav-badge{
+  display:flex;align-items:center;gap:5px;
+  padding:4px 11px;border-radius:5px;
+  background:rgba(0,246,135,.06);border:1px solid rgba(0,246,135,.18);
+  font-size:10px;font-weight:700;font-family:var(--font-mono);
+  color:var(--live);letter-spacing:1.5px;
+  animation:glow-pulse 2s ease-in-out infinite;
+}
+@keyframes glow-pulse{0%,100%{box-shadow:0 0 0 0 rgba(0,255,136,.0)}50%{box-shadow:0 0 8px 0 rgba(0,255,136,.15)}}
+.nav-dot{width:6px;height:6px;border-radius:50%;background:var(--live);box-shadow:0 0 8px var(--live);animation:blink 1.5s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.top-clock{font-family:var(--font-mono);font-size:12px;color:var(--text2);letter-spacing:.5px;}
+.top-btn{
+  padding:6px 14px;border-radius:6px;
+  font-size:11px;font-family:var(--font-mono);font-weight:700;
+  cursor:pointer;transition:all .2s;letter-spacing:.5px;border:1px solid;
+}
+.top-btn-add{
+  background:rgba(0,216,255,.08);border-color:rgba(0,216,255,.25);color:var(--cyan);
+}
+.top-btn-add:hover{background:rgba(0,216,255,.18);border-color:var(--cyan);box-shadow:0 0 12px rgba(0,216,255,.2);}
+.top-btn-set{
+  background:rgba(255,109,0,.07);border-color:rgba(255,109,0,.22);color:var(--fb-orange);
+}
+.top-btn-set:hover{background:rgba(255,109,0,.15);}
+
+/* ══════════════ ALERT BAR ══════════════ */
+.alert-bar{
+  display:none;align-items:center;gap:10px;
+  padding:9px 28px;
+  background:rgba(255,196,0,.06);
+  border-bottom:1px solid rgba(255,196,0,.2);
+  font-size:11px;color:var(--yellow);
+  font-family:var(--font-mono);letter-spacing:.5px;
+}
+.alert-bar.show{display:flex;}
+.alert-icon{font-size:13px;}
+.alert-link{color:var(--cyan);text-decoration:underline;cursor:pointer;}
+
+/* ══════════════ FB NOTICE ══════════════ */
+.fb-notice{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 28px;
+  background:rgba(255,109,0,.04);
+  border-bottom:1px solid rgba(255,109,0,.1);
+  font-size:10px;color:var(--text2);
+  font-family:var(--font-mono);letter-spacing:.5px;
+}
+.fb-notice strong{color:var(--fb-orange);}
+.fb-notice.hidden{display:none;}
+
+/* ══════════════ MAIN ══════════════ */
+.main{padding:22px 28px 40px;max-width:1480px;margin:0 auto;}
+
+/* ══════════════ ACCOUNT CARDS — v5 REDESIGN ══════════════ */
+.accounts-row{
+  display:flex;gap:14px;margin-bottom:26px;
+  overflow-x:auto;padding-bottom:6px;
+}
+.accounts-row::-webkit-scrollbar{height:3px;}
+.accounts-row::-webkit-scrollbar-track{background:transparent;}
+.accounts-row::-webkit-scrollbar-thumb{background:var(--border3);border-radius:2px;}
+
+/* ── THE CARD ── */
+.acc-card{
+  min-width:300px;max-width:330px;flex-shrink:0;
+  border-radius:18px;
+  border:1px solid var(--border);
+  background:linear-gradient(155deg,var(--surface2) 0%,var(--surface) 100%);
+  cursor:pointer;
+  transition:transform .22s cubic-bezier(.4,0,.2,1),
+             border-color .22s,box-shadow .22s;
+  position:relative;overflow:hidden;
+}
+
+/* Shimmer beam on hover */
+.acc-card::before{
+  content:'';position:absolute;
+  top:-60%;left:-40%;width:60%;height:200%;
+  background:linear-gradient(105deg,transparent,rgba(255,255,255,.04),transparent);
+  transform:skewX(-15deg);
+  transition:left .5s ease;pointer-events:none;z-index:1;
+}
+.acc-card:hover::before{left:130%;}
+
+/* Active glow */
+.acc-card.active{
+  border-color:var(--acc-color,var(--cyan));
+  box-shadow:0 0 0 1px var(--acc-color,var(--cyan)),
+             0 8px 40px rgba(0,0,0,.5),
+             inset 0 0 60px rgba(0,0,0,.1);
+}
+.acc-card:hover:not(.active){
+  border-color:var(--border2);
+  transform:translateY(-3px);
+  box-shadow:0 12px 40px rgba(0,0,0,.4);
+}
+
+/* Colored top edge */
+.acc-top-bar{
+  height:3px;
+  background:linear-gradient(90deg,var(--acc-color,var(--cyan)) 0%,transparent 100%);
+  border-radius:18px 18px 0 0;
+}
+
+.acc-body{padding:16px 18px 14px;position:relative;z-index:2;}
+
+/* Row 1: ID + badges */
+.acc-row1{display:flex;align-items:center;gap:6px;margin-bottom:12px;}
+
+.acc-login{
+  font-size:10px;font-family:var(--font-mono);
+  color:var(--text3);letter-spacing:.5px;flex:1;
+}
+
+/* Platform pill: MT4 / MT5 */
+.acc-platform{
+  display:inline-flex;align-items:center;gap:3px;
+  padding:2px 8px 2px 6px;border-radius:20px;
+  font-size:8px;font-weight:800;letter-spacing:1.5px;
+  font-family:var(--font-mono);text-transform:uppercase;
+}
+.acc-platform.mt4{
+  background:rgba(255,196,0,.1);
+  border:1px solid rgba(255,196,0,.3);
+  color:var(--yellow);
+}
+.acc-platform.mt5{
+  background:rgba(0,216,255,.1);
+  border:1px solid rgba(0,216,255,.3);
+  color:var(--cyan);
+}
+.acc-platform.mt-unk{
+  background:rgba(107,137,176,.08);
+  border:1px solid var(--border2);
+  color:var(--text2);
+}
+.plt-dot{
+  width:5px;height:5px;border-radius:50%;
+  background:currentColor;opacity:.7;flex-shrink:0;
+}
+
+/* Live / Demo badge */
+.acc-badge{
+  padding:2px 8px;border-radius:20px;
+  font-size:8px;font-weight:700;letter-spacing:1.5px;
+  font-family:var(--font-mono);text-transform:uppercase;
+}
+.b-real{background:rgba(0,245,176,.08);color:var(--green);border:1px solid rgba(0,245,176,.22);}
+.b-demo{background:rgba(255,196,0,.08);color:var(--yellow);border:1px solid rgba(255,196,0,.2);}
+.b-wait{background:rgba(0,216,255,.08);color:var(--cyan);border:1px solid rgba(0,216,255,.2);}
+
+/* Balance — the hero number */
+.acc-balance-wrap{margin-bottom:3px;}
+.acc-balance{
+  font-size:28px;font-weight:700;
+  font-family:var(--font-mono);
+  letter-spacing:-1.5px;line-height:1;
+}
+.acc-currency{
+  font-size:11px;font-weight:600;
+  color:var(--text2);margin-left:4px;
+  font-family:var(--font-mono);
+  vertical-align:3px;
+}
+
+/* Equity mini line */
+.acc-equity-row{
+  display:flex;align-items:center;gap:6px;
+  margin-bottom:14px;
+}
+.acc-eq-label{font-size:9px;color:var(--text3);font-family:var(--font-mono);}
+.acc-eq-val{font-size:10px;font-weight:700;font-family:var(--font-mono);}
+.acc-eq-delta{
+  font-size:9px;font-family:var(--font-mono);
+  padding:1px 5px;border-radius:4px;
+}
+.acc-eq-delta.pos{background:rgba(0,245,176,.1);color:var(--green);}
+.acc-eq-delta.neg{background:rgba(255,48,96,.1);color:var(--red);}
+
+/* Divider */
+.acc-divider{
+  height:1px;
+  background:linear-gradient(90deg,var(--border2),transparent);
+  margin:0 -18px;margin-bottom:12px;
+}
+
+/* Info grid: broker + account type merged into 1 row, 2 cols */
+.acc-info-grid{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:0;margin-bottom:12px;
+}
+.acc-info-cell{padding:0 10px 0 0;}
+.acc-info-cell:last-child{padding:0 0 0 10px;border-left:1px solid var(--border);}
+.acc-info-label{
+  font-size:7px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--text3);font-family:var(--font-mono);margin-bottom:3px;
+}
+.acc-info-val{
+  font-size:11px;font-weight:700;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.acc-info-sub{
+  font-size:9px;color:var(--text2);font-family:var(--font-mono);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  margin-top:1px;
+}
+
+/* Timestamp */
+.acc-ts{
+  display:flex;align-items:center;gap:5px;
+  font-size:9px;color:var(--text3);font-family:var(--font-mono);
+}
+.acc-ts-dot{
+  width:5px;height:5px;border-radius:50%;
+  background:var(--green);box-shadow:0 0 5px var(--green);
+  animation:blink 1.5s infinite;flex-shrink:0;
+}
+.acc-ts.live{color:var(--green);}
+.acc-ts.stale{color:var(--text3);}
+
+/* delete btn */
+.acc-del{
+  position:absolute;top:14px;right:12px;
+  background:transparent;border:none;
+  color:var(--text3);font-size:11px;cursor:pointer;
+  width:20px;height:20px;display:flex;align-items:center;justify-content:center;
+  border-radius:4px;opacity:0;transition:all .15s;z-index:5;
+}
+.acc-card:hover .acc-del{opacity:1;}
+.acc-del:hover{color:var(--red)!important;opacity:1!important;background:rgba(255,48,96,.1);}
+
+/* Add card */
+.acc-add-card{
+  min-width:130px;max-width:150px;flex-shrink:0;
+  border-radius:18px;
+  border:1px dashed var(--border2);background:transparent;
+  cursor:pointer;transition:all .22s;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+}
+.acc-add-card:hover{
+  border-color:rgba(0,216,255,.5);
+  background:rgba(0,216,255,.03);
+  transform:translateY(-3px);
+}
+.acc-add-icon{
+  width:38px;height:38px;border-radius:50%;
+  border:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;color:var(--text3);
+  transition:all .2s;
+}
+.acc-add-card:hover .acc-add-icon{
+  border-color:rgba(0,216,255,.4);color:var(--cyan);
+  box-shadow:0 0 12px rgba(0,216,255,.15);
+}
+.acc-add-text{font-size:10px;color:var(--text3);font-family:var(--font-mono);letter-spacing:.5px;}
+
+/* ══════════════ STAT CARDS (8-grid) ══════════════ */
+.stats-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:12px;margin-bottom:20px;
+}
+@media(max-width:1100px){.stats-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:600px){.stats-grid{grid-template-columns:1fr;}}
+
+.stat-card{
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:12px;padding:18px 20px;
+  position:relative;overflow:hidden;
+  transition:border-color .25s, transform .2s;
+}
+.stat-card:hover{border-color:var(--border2);transform:translateY(-1px);}
+.stat-card.flash{animation:card-flash .6s ease-out;}
+@keyframes card-flash{0%{border-color:var(--cyan);box-shadow:0 0 16px rgba(0,216,255,.2)}100%{border-color:var(--border);box-shadow:none}}
+
+.stat-accent{
+  position:absolute;top:0;left:0;bottom:0;width:2px;
+  background:var(--s-color,var(--cyan));
+  border-radius:12px 0 0 12px;
+  opacity:.7;
+}
+
+.stat-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.stat-label{
+  font-size:9px;font-weight:600;letter-spacing:2px;text-transform:uppercase;
+  color:var(--text2);font-family:var(--font-mono);
+}
+.stat-icon{font-size:16px;opacity:.6;}
+.stat-value{
+  font-size:22px;font-weight:700;
+  font-family:var(--font-mono);letter-spacing:-.5px;line-height:1;
+}
+.stat-sub{font-size:10px;margin-top:6px;font-family:var(--font-mono);color:var(--text2);}
+
+/* colors */
+.cv-green{color:var(--green);}
+.cv-red{color:var(--red);}
+.cv-cyan{color:var(--cyan);}
+.cv-purple{color:var(--purple);}
+.cv-yellow{color:var(--yellow);}
+.cv-muted{color:var(--text2);}
+.cv-orange{color:var(--orange);}
+
+/* ══════════════ LAYOUT COLS ══════════════ */
+.row-2col{
+  display:grid;grid-template-columns:1fr 340px;
+  gap:14px;margin-bottom:18px;
+}
+@media(max-width:1100px){.row-2col{grid-template-columns:1fr;}}
+
+/* ══════════════ CARD ══════════════ */
+.card{
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:14px;padding:22px;
+}
+.card-head{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:18px;
+}
+.card-title{
+  display:flex;align-items:center;gap:9px;
+  font-size:12px;font-weight:700;letter-spacing:.5px;
+  text-transform:uppercase;
+}
+.ct-pip{
+  width:8px;height:8px;border-radius:2px;
+  box-shadow:0 0 6px currentColor;flex-shrink:0;
+}
+
+/* chart tabs */
+.chart-tabs{display:flex;gap:4px;}
+.ct-btn{
+  padding:3px 10px;border-radius:4px;border:1px solid var(--border);
+  background:transparent;color:var(--text2);
+  font-size:9px;font-family:var(--font-mono);font-weight:700;
+  cursor:pointer;transition:all .15s;letter-spacing:1px;text-transform:uppercase;
+}
+.ct-btn.active{background:rgba(0,216,255,.12);border-color:rgba(0,216,255,.4);color:var(--cyan);}
+.ct-btn:hover:not(.active){border-color:var(--border2);color:var(--text);}
+
+/* ══════════════ POSITIONS ══════════════ */
+.pos-list{display:flex;flex-direction:column;gap:8px;}
+.pos-item{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:11px 13px;border-radius:9px;
+  background:var(--surface3);border:1px solid var(--border);
+  transition:border-color .15s;
+}
+.pos-item:hover{border-color:var(--border2);}
+.pos-sym{font-size:13px;font-weight:700;letter-spacing:.3px;}
+.pos-detail{font-size:9px;color:var(--text2);font-family:var(--font-mono);margin-top:3px;}
+.pos-profit{font-size:14px;font-weight:700;font-family:var(--font-mono);}
+.pos-badge{
+  display:inline-flex;align-items:center;
+  padding:1px 6px;border-radius:3px;
+  font-size:8px;font-weight:700;font-family:var(--font-mono);letter-spacing:1.5px;
+  margin-right:5px;
+}
+.pb-buy{background:rgba(0,245,176,.12);color:var(--green);}
+.pb-sell{background:rgba(255,48,96,.12);color:var(--red);}
+
+/* ══════════════ STATS TABLE ══════════════ */
+.stat-table{display:grid;grid-template-columns:1fr 1fr;gap:0;}
+.st-col{padding:0 10px;}
+.st-col:first-child{border-right:1px solid var(--border);}
+.st-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:8px 0;border-bottom:1px solid rgba(22,32,53,.8);
+}
+.st-row:last-child{border-bottom:none;}
+.st-key{font-size:11px;color:var(--text2);font-family:var(--font-mono);}
+.st-val{font-size:11px;font-weight:700;font-family:var(--font-mono);}
+
+/* ══════════════ RISK BARS ══════════════ */
+.risk-bar-wrap{margin-bottom:13px;}
+.rb-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
+.rb-key{font-size:10px;color:var(--text2);font-family:var(--font-mono);}
+.rb-val{font-size:10px;font-weight:700;font-family:var(--font-mono);}
+.rb-track{height:4px;background:var(--surface3);border-radius:2px;overflow:hidden;}
+.rb-fill{height:100%;border-radius:2px;transition:width 1.4s cubic-bezier(.4,0,.2,1);}
+.rb-sub{font-size:9px;color:var(--text3);font-family:var(--font-mono);margin-top:3px;}
+
+/* ══════════════ DONUT ══════════════ */
+.donut-wrap{display:flex;align-items:center;gap:20px;margin-top:18px;}
+.donut-canvas-wrap{position:relative;width:86px;height:86px;flex-shrink:0;}
+.donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.donut-pct{font-size:17px;font-weight:700;font-family:var(--font-mono);color:var(--green);}
+.donut-label{font-size:8px;color:var(--text2);font-family:var(--font-mono);letter-spacing:1px;margin-top:1px;}
+.donut-stats{flex:1;display:flex;flex-direction:column;gap:8px;}
+.ds-row{display:flex;justify-content:space-between;align-items:center;}
+.ds-key{font-size:10px;color:var(--text2);}
+.ds-val{font-size:10px;font-weight:700;font-family:var(--font-mono);}
+
+/* ══════════════ CHART ══════════════ */
+.chart-wrap{height:200px;position:relative;}
+
+/* ══════════════ CHARTS 2COL ══════════════ */
+.charts-two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;}
+@media(max-width:900px){.charts-two{grid-template-columns:1fr;}}
+
+/* ══════════════ HISTORY TABLE ══════════════ */
+.history-card{margin-bottom:20px;}
+.hist-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.hc-select{
+  background:var(--surface3);border:1px solid var(--border);
+  color:var(--text2);font-family:var(--font-mono);
+  font-size:9px;padding:5px 9px;border-radius:5px;cursor:pointer;
+  outline:none;transition:border-color .2s;letter-spacing:.5px;
+}
+.hc-select:focus{border-color:var(--cyan);}
+.hist-count{font-size:10px;color:var(--text2);font-family:var(--font-mono);}
+
+.hist-sum{
+  display:flex;gap:22px;
+  padding:9px 0 14px;
+  border-bottom:1px solid var(--border);
+  margin-bottom:6px;flex-wrap:wrap;
+}
+.hs-item{display:flex;flex-direction:column;gap:2px;}
+.hs-label{font-size:8px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;font-family:var(--font-mono);}
+.hs-val{font-size:12px;font-weight:700;font-family:var(--font-mono);}
+
+.htable{width:100%;border-collapse:collapse;font-size:11px;}
+.htable th{
+  text-align:left;padding:8px 10px;
+  font-size:8px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--text3);font-family:var(--font-mono);
+  border-bottom:1px solid var(--border);white-space:nowrap;
+  cursor:default;
+}
+.htable th[onclick]{cursor:pointer;}
+.htable th[onclick]:hover{color:var(--cyan);}
+.htable td{
+  padding:9px 10px;
+  border-bottom:1px solid rgba(22,32,53,.5);
+  font-family:var(--font-mono);white-space:nowrap;
+}
+.htable tr:last-child td{border-bottom:none;}
+.htable tr:hover td{background:rgba(255,255,255,.015);}
+
+.sym-chip{display:inline-flex;align-items:center;gap:5px;font-weight:700;}
+.sym-flag{
+  width:20px;height:20px;border-radius:4px;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:9px;font-weight:700;font-family:var(--font-mono);flex-shrink:0;
+}
+
+/* ══════════════ ACCOUNT INFO STRIP (merged footer) ══════════════ */
+.acct-info-strip{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  border:1px solid var(--border);border-radius:14px;
+  overflow:hidden;margin-bottom:22px;
+  background:var(--surface2);
+}
+@media(max-width:900px){.acct-info-strip{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:500px){.acct-info-strip{grid-template-columns:1fr;}}
+
+.acct-info-cell{
+  padding:16px 20px;position:relative;
+}
+.acct-info-cell:not(:last-child){
+  border-right:1px solid var(--border);
+}
+@media(max-width:900px){
+  .acct-info-cell:nth-child(2){border-right:none;}
+  .acct-info-cell:nth-child(1),
+  .acct-info-cell:nth-child(2){border-bottom:1px solid var(--border);}
+}
+.acct-info-top-bar{
+  position:absolute;top:0;left:0;right:0;height:2px;
+}
+.acct-info-label{
+  font-size:7px;letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--text3);font-family:var(--font-mono);margin-bottom:6px;
+}
+.acct-info-val{
+  font-size:15px;font-weight:700;color:var(--text);
+  letter-spacing:-.3px;line-height:1.2;
+}
+.acct-info-sub{
+  font-size:9px;color:var(--text2);font-family:var(--font-mono);margin-top:3px;
+}
+
+/* keep old class refs working */
+.foot-label{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--text2);margin-bottom:8px;font-family:var(--font-mono);}
+.foot-val{font-size:18px;font-weight:700;letter-spacing:-.3px;}
+.foot-sub{font-size:10px;color:var(--text2);margin-top:4px;font-family:var(--font-mono);}
+
+/* ══════════════ PAGE FOOTER ══════════════ */
+.page-footer{
+  text-align:center;padding:14px;
+  font-size:9px;color:var(--text3);
+  font-family:var(--font-mono);letter-spacing:1.5px;
+  border-top:1px solid var(--border);
+}
+
+/* ══════════════ MODAL ══════════════ */
+.modal-overlay{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.75);
+  backdrop-filter:blur(12px);
+  z-index:1000;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .25s;
+}
+.modal-overlay.open{opacity:1;pointer-events:all;}
+
+.modal{
+  background:var(--surface);
+  border:1px solid var(--border2);
+  border-radius:16px;padding:32px;
+  width:100%;max-width:480px;
+  transform:translateY(16px) scale(.98);
+  transition:transform .25s cubic-bezier(.34,1.56,.64,1);
+  position:relative;overflow:hidden;
+  max-height:90vh;overflow-y:auto;
+}
+.modal-overlay.open .modal{transform:translateY(0) scale(1);}
+
+.modal::before{
+  content:'';position:absolute;top:0;left:20%;right:20%;height:1px;
+  background:linear-gradient(90deg,transparent,var(--cyan2),transparent);
+  opacity:.6;
+}
+
+.modal-title{font-size:19px;font-weight:700;margin-bottom:4px;letter-spacing:-.3px;}
+.modal-sub{font-size:11px;color:var(--text2);margin-bottom:24px;font-family:var(--font-mono);}
+
+.close-modal{
+  position:absolute;top:15px;right:15px;
+  background:transparent;border:none;color:var(--text2);
+  font-size:16px;cursor:pointer;width:28px;height:28px;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:6px;transition:all .15s;
+}
+.close-modal:hover{background:rgba(255,255,255,.06);color:var(--text);}
+
+.field{margin-bottom:16px;}
+.field-label{
+  display:block;font-size:9px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--text2);margin-bottom:7px;font-family:var(--font-mono);
+}
+.field-input{
+  width:100%;background:var(--surface2);
+  border:1px solid var(--border);border-radius:8px;
+  padding:11px 14px;color:var(--text);
+  font-size:12px;font-family:var(--font-mono);
+  outline:none;transition:border-color .2s;
+}
+.field-input:focus{border-color:var(--cyan2);}
+.field-input::placeholder{color:var(--text3);}
+
+.submit-btn{
+  width:100%;padding:13px;border-radius:9px;
+  background:linear-gradient(90deg,var(--cyan2),var(--purple));
+  border:none;color:#fff;
+  font-size:13px;font-weight:700;font-family:var(--font-body);
+  cursor:pointer;transition:all .2s;letter-spacing:.3px;
+  margin-top:4px;
+  box-shadow:0 4px 16px rgba(0,150,204,.2);
+}
+.submit-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,150,204,.3);}
+.submit-btn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none;}
+
+.fb-btn{
+  width:100%;padding:12px;border-radius:9px;
+  background:linear-gradient(90deg,var(--fb-orange),#e65100);
+  border:none;color:#fff;
+  font-size:13px;font-weight:700;font-family:var(--font-body);
+  cursor:pointer;transition:all .2s;letter-spacing:.3px;
+  margin-top:4px;
+}
+.fb-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(255,109,0,.3);}
+.fb-btn:disabled{opacity:.45;cursor:not-allowed;transform:none;}
+
+.demo-btn{
+  width:100%;padding:11px;border-radius:8px;
+  background:transparent;border:1px solid var(--border2);
+  color:var(--text2);font-size:12px;font-weight:600;
+  font-family:var(--font-body);cursor:pointer;transition:all .2s;margin-top:8px;
+}
+.demo-btn:hover{border-color:var(--text2);color:var(--text);}
+
+.error-box{
+  background:rgba(255,48,96,.06);border:1px solid rgba(255,48,96,.2);
+  border-radius:7px;padding:9px 13px;
+  font-size:11px;color:var(--red);
+  margin-top:12px;font-family:var(--font-mono);display:none;
+}
+.note-box{
+  background:rgba(255,109,0,.04);border:1px solid rgba(255,109,0,.15);
+  border-radius:7px;padding:10px 13px;
+  font-size:10px;color:var(--orange);
+  margin-top:12px;font-family:var(--font-mono);line-height:1.7;
+}
+.note-box a{color:var(--cyan);}
+
+.spinner{
+  display:inline-block;width:12px;height:12px;
+  border:2px solid rgba(255,255,255,.25);border-top-color:#fff;
+  border-radius:50%;animation:spin .5s linear infinite;
+  vertical-align:middle;margin-right:6px;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ══════════════ FB STATUS ══════════════ */
+.fb-status{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 12px;border-radius:7px;
+  font-size:10px;font-family:var(--font-mono);margin-bottom:16px;
+}
+.fb-status.connected{background:rgba(0,245,176,.06);border:1px solid rgba(0,245,176,.2);color:var(--green);}
+.fb-status.disconnected{background:rgba(255,48,96,.06);border:1px solid rgba(255,48,96,.18);color:var(--red);}
+.fb-status.pending{background:rgba(255,196,0,.06);border:1px solid rgba(255,196,0,.2);color:var(--yellow);}
+.fb-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+
+/* ══════════════ PAGINATION ══════════════ */
+.pg-btn{
+  padding:4px 10px;border-radius:5px;
+  border:1px solid var(--border);background:var(--surface3);
+  color:var(--text2);font-size:10px;font-family:var(--font-mono);
+  cursor:pointer;transition:all .15s;min-width:30px;
+}
+.pg-btn:hover:not(:disabled){border-color:var(--border2);color:var(--text);}
+.pg-btn.active{background:rgba(139,92,246,.2);border-color:var(--purple);color:var(--purple);font-weight:700;}
+.pg-btn:disabled{opacity:.3;cursor:not-allowed;}
+.pg-ellipsis{color:var(--text3);font-family:var(--font-mono);font-size:11px;padding:0 4px;}
+
+/* ══════════════ WELCOME OVERLAY ══════════════ */
+.welcome-overlay{
+  position:fixed;inset:0;z-index:2000;
+  background:radial-gradient(ellipse at 30% 20%, rgba(0,150,204,.04) 0%, transparent 60%),
+             radial-gradient(ellipse at 70% 80%, rgba(139,92,246,.04) 0%, transparent 60%),
+             var(--bg);
+  display:flex;align-items:center;justify-content:center;
+  overflow-y:auto;padding:20px;
+}
+.welcome-overlay.hidden{display:none;}
+
+.welcome-box{width:100%;max-width:560px;display:flex;flex-direction:column;align-items:center;}
+
+.welcome-brand{
+  display:flex;flex-direction:column;align-items:center;margin-bottom:28px;
+}
+.welcome-logo-wrap{
+  width:64px;height:64px;border-radius:16px;
+  background:linear-gradient(135deg,var(--cyan2),var(--purple));
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;font-weight:700;color:#fff;
+  font-family:var(--font-mono);letter-spacing:-1.5px;
+  box-shadow:0 0 50px rgba(0,150,204,.25);
+  margin-bottom:16px;
+}
+.welcome-title{font-size:26px;font-weight:700;letter-spacing:-.5px;text-align:center;}
+.welcome-title span{color:var(--cyan);}
+.welcome-sub{font-size:12px;color:var(--text2);font-family:var(--font-mono);margin-top:5px;text-align:center;letter-spacing:.5px;}
+.welcome-badges{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;justify-content:center;}
+.wb{
+  padding:3px 12px;border-radius:20px;
+  font-size:10px;font-weight:600;font-family:var(--font-mono);
+  background:rgba(0,245,176,.08);border:1px solid rgba(0,245,176,.2);
+  color:var(--green);letter-spacing:.5px;
+}
+
+/* ══════════════ SETUP TABS ══════════════ */
+.setup-tabs{
+  display:flex;width:100%;
+  border-radius:10px 10px 0 0;
+  overflow:hidden;border:1px solid var(--border2);border-bottom:none;
+}
+.setup-tab{
+  flex:1;padding:12px;text-align:center;
+  font-size:11px;font-weight:700;font-family:var(--font-mono);
+  cursor:pointer;background:var(--surface2);color:var(--text2);
+  border:none;transition:all .2s;letter-spacing:1px;
+}
+.setup-tab.active{
+  background:var(--surface);color:var(--text);
+  border-bottom:2px solid var(--cyan2);
+}
+.setup-panel{
+  width:100%;
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:0 0 14px 14px;
+  padding:26px;position:relative;overflow:hidden;
+}
+.setup-panel::before{
+  content:'';position:absolute;top:0;left:20%;right:20%;height:1px;
+  background:linear-gradient(90deg,transparent,var(--cyan2),transparent);opacity:.4;
+}
+.panel-section{display:none;}
+.panel-section.active{display:block;}
+
+.steps-row{display:flex;align-items:flex-start;gap:12px;margin-bottom:18px;}
+.step-circle{
+  width:24px;height:24px;border-radius:50%;flex-shrink:0;margin-top:2px;
+  background:rgba(0,150,204,.1);border:1px solid rgba(0,150,204,.3);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;color:var(--cyan2);
+}
+.step-title{font-size:13px;font-weight:600;margin-bottom:3px;}
+.step-desc{font-size:10px;color:var(--text2);font-family:var(--font-mono);line-height:1.6;}
+.step-desc a{color:var(--cyan);}
+.step-desc code{background:var(--surface3);padding:1px 5px;border-radius:3px;font-size:9px;}
+
+.color-row{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px;}
+.color-opt{width:100%;aspect-ratio:1;border-radius:7px;border:2px solid transparent;cursor:pointer;transition:all .2s;}
+.color-opt.selected{border-color:rgba(255,255,255,.7);transform:scale(1.08);}
+.color-opt:hover:not(.selected){border-color:rgba(255,255,255,.3);}
+
+.ea-code-block{
+  background:var(--surface3);border:1px solid var(--border);
+  border-radius:8px;padding:14px;
+  font-family:var(--font-mono);font-size:10px;color:var(--text2);
+  white-space:pre;overflow-x:auto;line-height:1.7;
+  margin-top:10px;max-height:260px;overflow-y:auto;
+}
+.ea-code-block .kw{color:var(--cyan);}
+.ea-code-block .str{color:var(--green);}
+.ea-code-block .cm{color:var(--text3);}
+.copy-btn{
+  padding:4px 11px;border-radius:4px;
+  background:rgba(0,216,255,.08);border:1px solid rgba(0,216,255,.2);
+  color:var(--cyan);font-size:9px;font-family:var(--font-mono);
+  cursor:pointer;transition:all .2s;float:right;margin-top:-4px;
+  letter-spacing:.5px;
+}
+.copy-btn:hover{background:rgba(0,216,255,.18);}
+
+.welcome-footer{margin-top:14px;font-size:10px;color:var(--text3);font-family:var(--font-mono);text-align:center;letter-spacing:.5px;}
+</style>
+</head>
+<body>
+
+<!-- ══════════ WELCOME OVERLAY ══════════ -->
+<div class="welcome-overlay" id="welcomeOverlay">
+  <div class="welcome-box">
+    <div class="welcome-brand">
+      <div class="welcome-logo-wrap">TD</div>
+      <div class="welcome-title">Trade<span>Desk</span> v5</div>
+      <div class="welcome-sub">MT4 · MT5 · Firebase Realtime · Không giới hạn tài khoản</div>
+      <div class="welcome-badges">
+        <span class="wb">✓ Hoàn toàn miễn phí</span>
+        <span class="wb">✓ Push realtime WebSocket</span>
+        <span class="wb">✓ 10GB/tháng</span>
+      </div>
+    </div>
+
+    <div class="setup-tabs" style="width:100%">
+      <button class="setup-tab active" onclick="switchSetupTab('setup',this)">① Firebase</button>
+      <button class="setup-tab" onclick="switchSetupTab('account',this)">② Tài khoản</button>
+      <button class="setup-tab" onclick="switchSetupTab('ea',this)">③ EA Bridge</button>
+    </div>
+    <div class="setup-panel" style="width:100%">
+
+      <!-- TAB 1: Firebase -->
+      <div class="panel-section active" id="tab-setup">
+        <div class="steps-row"><div class="step-circle">1</div><div><div class="step-title">Tạo Firebase project</div><div class="step-desc">Vào <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> → Add project → tắt Analytics → Create project</div></div></div>
+        <div class="steps-row"><div class="step-circle">2</div><div><div class="step-title">Tạo Realtime Database</div><div class="step-desc">Build → Realtime Database → Create database → <strong>Singapore (asia-southeast1)</strong> → Start in test mode</div></div></div>
+        <div class="steps-row"><div class="step-circle">3</div><div><div class="step-title">Lấy Database URL</div><div class="step-desc">URL dạng: <code>https://your-project.asia-southeast1.firebasedatabase.app</code></div></div></div>
+        <div class="field">
+          <label class="field-label">Database URL</label>
+          <input class="field-input" id="fbUrl" placeholder="https://your-project.asia-southeast1.firebasedatabase.app" />
+        </div>
+        <div class="steps-row" style="margin-top:4px;"><div class="step-circle">4</div><div><div class="step-title">API Key <span style="color:var(--text3);font-size:10px">(Project Settings → General → Your apps → Web app)</span></div><div class="step-desc">Nếu chưa có web app: Add app → Web → đăng ký → copy config</div></div></div>
+        <div class="field">
+          <label class="field-label">API Key <span style="color:var(--text3)">(từ firebaseConfig)</span></label>
+          <input class="field-input" id="fbApiKey" placeholder="AIzaSy..." />
+        </div>
+        <button class="fb-btn" onclick="saveFirebaseConfig()">Lưu & Kết nối Firebase →</button>
+        <div class="error-box" id="fbError"></div>
+        <button class="demo-btn" onclick="loadDemoMode()">Dùng demo data (không cần Firebase)</button>
+      </div>
+
+      <!-- TAB 2: Add account -->
+      <div class="panel-section" id="tab-account">
+        <div id="fbStatusBanner" class="fb-status disconnected">
+          <div class="fb-dot" style="background:var(--red)"></div>
+          Chưa kết nối Firebase — vui lòng cài đặt ở tab ①
+        </div>
+        <div class="field">
+          <label class="field-label">Login number (số tài khoản MT)</label>
+          <input class="field-input" id="accLogin" placeholder="VD: 847291" />
+        </div>
+        <div class="field">
+          <label class="field-label">Tên hiển thị <span style="color:var(--text3)">(tuỳ chọn)</span></label>
+          <input class="field-input" id="accName" placeholder="VD: Exness main" />
+        </div>
+        <div class="field">
+          <label class="field-label">Màu thẻ</label>
+          <div class="color-row">
+            <div class="color-opt selected" style="background:var(--cyan)" data-color="var(--cyan)" onclick="selectColor(this)"></div>
+            <div class="color-opt" style="background:var(--green)" data-color="var(--green)" onclick="selectColor(this)"></div>
+            <div class="color-opt" style="background:var(--purple)" data-color="var(--purple)" onclick="selectColor(this)"></div>
+            <div class="color-opt" style="background:var(--yellow)" data-color="var(--yellow)" onclick="selectColor(this)"></div>
+            <div class="color-opt" style="background:var(--red)" data-color="var(--red)" onclick="selectColor(this)"></div>
+          </div>
+        </div>
+        <button class="submit-btn" id="wAddBtn" onclick="addAccountFromWelcome()">Thêm tài khoản →</button>
+        <div class="error-box" id="accError"></div>
+      </div>
+
+      <!-- TAB 3: EA Bridge -->
+      <div class="panel-section" id="tab-ea">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <div style="font-size:12px;font-weight:600;">EA Bridge Code — MT4/MT5</div>
+          <button class="copy-btn" onclick="copyEA()">Copy code</button>
+        </div>
+        <div style="font-size:10px;color:var(--text2);font-family:var(--font-mono);margin-bottom:6px;">Database URL: <span id="eaUrlHint" style="color:var(--cyan);">—</span></div>
+        <div class="ea-code-block" id="eaCode"></div>
+        <div class="note-box" style="margin-top:12px;">
+          1. Copy code trên → Mở MT4/MT5 → MetaEditor → New → Expert Advisor<br>
+          2. Paste code → Compile (F7)<br>
+          3. Attach vào bất kỳ chart nào. EA sẽ tự push data mỗi giây.
+        </div>
+        <button class="submit-btn" onclick="finishSetup()" style="margin-top:12px;">Hoàn tất & Xem Dashboard →</button>
+      </div>
+    </div>
+    <div class="welcome-footer">TradeDesk v5 · MT4 · MT5 · Không lưu data lên server · Hoàn toàn client-side</div>
+  </div>
+</div>
+
+<!-- ══════════ TOPBAR ══════════ -->
+<div class="topbar">
+  <div class="logo" href="#">
+    <div class="logo-mark">TD</div>
+    <div class="logo-text">
+      <div class="logo-name">Trade<span>Desk</span></div>
+      <div class="logo-ver">v5 · MT4 · MT5 · REALTIME</div>
+    </div>
+  </div>
+  <div class="topbar-center">
+    <div class="nav-badge">
+      <div class="nav-dot"></div>
+      LIVE
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="top-clock" id="clock">00:00:00</div>
+    <button class="top-btn top-btn-add" onclick="openAddModal()">+ Thêm TK</button>
+    <button class="top-btn top-btn-set" onclick="openSettings()">⚙ Firebase</button>
+  </div>
+</div>
+
+<!-- FB NOTICE -->
+<div class="fb-notice" id="fbNotice">
+  <strong>⚠ Firebase chưa kết nối</strong> · Push data từ EA Bridge để bắt đầu · <span style="color:var(--cyan);cursor:pointer;text-decoration:underline;" onclick="openSettings()">Cài đặt ngay →</span>
+</div>
+
+<!-- ALERT BAR -->
+<div class="alert-bar" id="alertBar">
+  <span class="alert-icon">⚠</span>
+  <span id="alertText"></span>
+  <span class="alert-link" onclick="scrollToRisk()">Xem chi tiết rủi ro →</span>
+</div>
+
+<!-- ══════════ MAIN ══════════ -->
+<div class="main">
+
+  <!-- Account Tabs -->
+  <div class="accounts-row" id="accountsRow">
+    <div class="acc-add-card" onclick="openAddModal()">
+      <div class="acc-add-icon">＋</div>
+      <div class="acc-add-text">Thêm tài khoản</div>
+    </div>
+  </div>
+
+  <!-- Stats Grid -->
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card" style="--s-color:var(--cyan)">
+      <div class="stat-accent"></div>
+      <div class="stat-top"><div class="stat-label">Số dư · Balance</div><div class="stat-icon">💰</div></div>
+      <div class="stat-value" id="sBalance">—</div>
+      <div class="stat-sub" id="sBalanceSub">—</div>
+    </div>
+    <div class="stat-card" style="--s-color:var(--green)">
+      <div class="stat-accent"></div>
+      <div class="stat-top"><div class="stat-label">Vốn chủ · Equity</div><div class="stat-icon">📈</div></div>
+      <div class="stat-value cv-green" id="sEquity">—</div>
+      <div class="stat-sub cv-muted" id="sEquitySub">—</div>
+    </div>
+    <div class="stat-card" style="--s-color:var(--orange)">
+      <div class="stat-accent"></div>
+      <div class="stat-top"><div class="stat-label">Ký Quỹ Dùng · Margin</div><div class="stat-icon">🔒</div></div>
+      <div class="stat-value" id="sMargin">—</div>
+      <div class="stat-sub cv-muted" id="sMarginSub">—</div>
+    </div>
+    <div class="stat-card" style="--s-color:var(--purple)">
+      <div class="stat-accent"></div>
+      <div class="stat-top"><div class="stat-label">Ký Quỹ Tự Do · Free</div><div class="stat-icon">🔓</div></div>
+      <div class="stat-value cv-purple" id="sFreeMargin">—</div>
+      <div class="stat-sub cv-muted" id="sFreeMarginSub">—</div>
+    </div>
+    <div class="stat-card" style="--s-color:var(--yellow)">
+      <div class="stat-accent"></div>
+      <div class="stat-top"><div class="stat-label">Floating P&amp;L</div><div class="stat-icon">📊</div></div>
+      <div class="stat-value" id="sFloating">—</div>
+      <div class="stat-sub cv-muted" id="sFloatingSub">—</div>
+    </div>
+    <div class="stat-card" style="--s-color:var(--green)">
+      <div class="stat-accent"></div>
+      <div class="stat-top"><div class="stat-label">Realized P&amp;L</div><div class="stat-icon">✅</div></div>
+      <div class="stat-value" id="sRealized">—</div>
+      <div class="stat-sub cv-muted" id="sRealizedSub">—</div>
+    </div>
+    <div class="stat-card" style="--s-color:var(--cyan)">
+      <div class="stat-accent"></div>
+      <div class="stat-top"><div class="stat-label">Đòn Bẩy · Leverage</div><div class="stat-icon">⚡</div></div>
+      <div class="stat-value" id="sLeverage">—</div>
+      <div class="stat-sub cv-muted" id="sLeverageSub">—</div>
+    </div>
+    <div class="stat-card" style="--s-color:var(--red)">
+      <div class="stat-accent"></div>
+      <div class="stat-top"><div class="stat-label">Swap · Qua Đêm</div><div class="stat-icon">💫</div></div>
+      <div class="stat-value cv-red" id="sSwap">—</div>
+      <div class="stat-sub cv-muted" id="sSwapSub">—</div>
+    </div>
+  </div>
+
+  <!-- Equity Chart + Open Positions -->
+  <div class="row-2col">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">
+          <div class="ct-pip" style="background:var(--green);color:var(--green)"></div>
+          Biểu đồ Equity &amp; Balance
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <div class="chart-tabs" id="eqTypeTabs">
+            <button class="ct-btn active" onclick="setEqType('realtime',this)" title="Equity realtime">Live</button>
+            <button class="ct-btn" onclick="setEqType('history',this)" title="Balance từ lịch sử">History</button>
+          </div>
+          <div class="chart-tabs" id="eqRangeTabs">
+            <button class="ct-btn active" onclick="setChartRange('1D',this)">1D</button>
+            <button class="ct-btn" onclick="setChartRange('1W',this)">1W</button>
+            <button class="ct-btn" onclick="setChartRange('1M',this)">1M</button>
+            <button class="ct-btn" onclick="setChartRange('3M',this)">3M</button>
+            <button class="ct-btn" onclick="setChartRange('ALL',this)">ALL</button>
+          </div>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="equityChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">
+          <div class="ct-pip" style="background:var(--red);color:var(--red)"></div>
+          Lệnh đang mở
+        </div>
+        <span id="openCount" style="font-size:10px;color:var(--cyan);font-family:var(--font-mono);">0 lệnh</span>
+      </div>
+      <div class="pos-list" id="positionsList"></div>
+    </div>
+  </div>
+
+  <!-- Trade Stats + Risk -->
+  <div class="row-2col">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">
+          <div class="ct-pip" style="background:var(--cyan);color:var(--cyan)"></div>
+          Thống kê giao dịch
+        </div>
+      </div>
+      <div class="stat-table">
+        <div class="st-col">
+          <div class="st-row"><span class="st-key">Tổng lệnh</span><span class="st-val" id="tTotal">—</span></div>
+          <div class="st-row"><span class="st-key">Lệnh thắng</span><span class="st-val cv-green" id="tWins">—</span></div>
+          <div class="st-row"><span class="st-key">Lệnh thua</span><span class="st-val cv-red" id="tLosses">—</span></div>
+          <div class="st-row"><span class="st-key">Tỷ lệ thắng</span><span class="st-val cv-cyan" id="tWinRate">—</span></div>
+          <div class="st-row"><span class="st-key">R:R trung bình</span><span class="st-val" id="tRR">—</span></div>
+          <div class="st-row"><span class="st-key">Profit Factor</span><span class="st-val cv-green" id="tPF">—</span></div>
+        </div>
+        <div class="st-col">
+          <div class="st-row"><span class="st-key">Lợi nhuận lớn nhất</span><span class="st-val cv-green" id="tBestWin">—</span></div>
+          <div class="st-row"><span class="st-key">Lỗ lớn nhất</span><span class="st-val cv-red" id="tWorstLoss">—</span></div>
+          <div class="st-row"><span class="st-key">Avg Win</span><span class="st-val cv-green" id="tAvgWin">—</span></div>
+          <div class="st-row"><span class="st-key">Avg Loss</span><span class="st-val cv-red" id="tAvgLoss">—</span></div>
+          <div class="st-row"><span class="st-key">Max Drawdown</span><span class="st-val cv-red" id="tDD">—</span></div>
+          <div class="st-row"><span class="st-key">Sharpe Ratio</span><span class="st-val" id="tSharpe">—</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card" id="riskSection">
+      <div class="card-head">
+        <div class="card-title">
+          <div class="ct-pip" style="background:var(--yellow);color:var(--yellow)"></div>
+          Chỉ số rủi ro
+        </div>
+      </div>
+      <div class="risk-bar-wrap">
+        <div class="rb-label"><span class="rb-key">Margin Level</span><span class="rb-val cv-green" id="rML">—</span></div>
+        <div class="rb-track"><div class="rb-fill" id="rMLBar" style="width:0%"></div></div>
+        <div class="rb-sub" id="rMLSub"></div>
+      </div>
+      <div class="risk-bar-wrap">
+        <div class="rb-label"><span class="rb-key">Drawdown hiện tại</span><span class="rb-val cv-red" id="rDD">—</span></div>
+        <div class="rb-track"><div class="rb-fill" id="rDDBar" style="width:0%"></div></div>
+      </div>
+      <div class="risk-bar-wrap">
+        <div class="rb-label"><span class="rb-key">Rủi ro mỗi lệnh</span><span class="rb-val" id="rRPT">—</span></div>
+        <div class="rb-track"><div class="rb-fill" id="rRPTBar" style="width:0%"></div></div>
+      </div>
+      <div class="risk-bar-wrap">
+        <div class="rb-label"><span class="rb-key">Mức rủi ro tổng thể</span><span class="rb-val cv-green" id="rOverall">—</span></div>
+        <div class="rb-track"><div class="rb-fill" id="rOverallBar" style="width:0%"></div></div>
+      </div>
+      <div class="donut-wrap">
+        <div class="donut-canvas-wrap">
+          <canvas id="donutChart" width="86" height="86"></canvas>
+          <div class="donut-center">
+            <div class="donut-pct" id="donutPct">—</div>
+            <div class="donut-label">WIN RATE</div>
+          </div>
+        </div>
+        <div class="donut-stats">
+          <div class="ds-row"><span class="ds-key">Long thắng</span><span class="ds-val cv-green" id="dLong">—</span></div>
+          <div class="ds-row"><span class="ds-key">Short thắng</span><span class="ds-val cv-cyan" id="dShort">—</span></div>
+          <div class="ds-row"><span class="ds-key">Lệnh/ngày</span><span class="ds-val" id="dPerDay">—</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts 2 col -->
+  <div class="charts-two">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">
+          <div class="ct-pip" style="background:var(--green);color:var(--green)"></div>
+          Lợi nhuận theo Symbol
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="symbolChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">
+          <div class="ct-pip" style="background:var(--cyan);color:var(--cyan)"></div>
+          Kết quả theo ngày
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="dailyChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- History Table -->
+  <div class="card history-card">
+    <div class="card-head" style="flex-wrap:wrap;gap:10px;">
+      <div class="card-title">
+        <div class="ct-pip" style="background:var(--purple);color:var(--purple)"></div>
+        Lịch sử giao dịch
+      </div>
+      <div class="hist-controls">
+        <select id="histFilterSym" class="hc-select" onchange="histPage=1;renderHistTable()">
+          <option value="">Tất cả symbol</option>
+        </select>
+        <select id="histFilterType" class="hc-select" onchange="histPage=1;renderHistTable()">
+          <option value="">BUY + SELL</option>
+          <option value="BUY">BUY only</option>
+          <option value="SELL">SELL only</option>
+        </select>
+        <select id="histFilterResult" class="hc-select" onchange="histPage=1;renderHistTable()">
+          <option value="">Tất cả</option>
+          <option value="win">Thắng</option>
+          <option value="loss">Thua</option>
+        </select>
+        <select id="histPerPage" class="hc-select" onchange="histPage=1;renderHistTable()">
+          <option value="20">20/trang</option>
+          <option value="50">50/trang</option>
+          <option value="100">100/trang</option>
+        </select>
+        <span id="histCount" class="hist-count">—</span>
+      </div>
+    </div>
+    <div id="histSummaryBar" class="hist-sum"></div>
+    <div style="overflow-x:auto;">
+      <table class="htable">
+        <thead>
+          <tr>
+            <th onclick="sortHist('ticket')">TICKET <span id="sh_ticket"></span></th>
+            <th onclick="sortHist('symbol')">SYMBOL <span id="sh_symbol"></span></th>
+            <th>LOẠI</th>
+            <th onclick="sortHist('lots')">LOT <span id="sh_lots"></span></th>
+            <th>GIÁ MỞ</th><th>GIÁ ĐÓNG</th>
+            <th>SL</th><th>TP</th>
+            <th onclick="sortHist('swap')">SWAP <span id="sh_swap"></span></th>
+            <th onclick="sortHist('commission')">COMM <span id="sh_commission"></span></th>
+            <th onclick="sortHist('profit')">LÃI/LỖ <span id="sh_profit"></span></th>
+            <th onclick="sortHist('closeTime')">ĐÓNG LÚC <span id="sh_closeTime"></span></th>
+            <th onclick="sortHist('duration')">GIỮ <span id="sh_duration"></span></th>
+          </tr>
+        </thead>
+        <tbody id="histTable"></tbody>
+      </table>
+    </div>
+    <div id="histPagination" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:14px 4px 2px;flex-wrap:wrap;"></div>
+  </div>
+
+  <!-- Account Info Strip (merged) -->
+  <div class="acct-info-strip">
+    <div class="acct-info-cell">
+      <div class="acct-info-top-bar" style="background:linear-gradient(90deg,var(--cyan),transparent)"></div>
+      <div class="acct-info-label">Nền tảng · Loại TK</div>
+      <div class="acct-info-val" id="fAccType">—</div>
+      <div class="acct-info-sub" id="fAccTypeSub">—</div>
+    </div>
+    <div class="acct-info-cell">
+      <div class="acct-info-top-bar" style="background:linear-gradient(90deg,var(--green),transparent)"></div>
+      <div class="acct-info-label">Broker / Server</div>
+      <div class="acct-info-val" id="fBroker" style="font-size:13px;">—</div>
+      <div class="acct-info-sub" id="fServer">—</div>
+    </div>
+    <div class="acct-info-cell">
+      <div class="acct-info-top-bar" style="background:linear-gradient(90deg,var(--purple),transparent)"></div>
+      <div class="acct-info-label">Nạp / Rút tổng</div>
+      <div class="acct-info-val" id="fDeposit">—</div>
+      <div class="acct-info-sub" id="fDepositSub">—</div>
+    </div>
+    <div class="acct-info-cell">
+      <div class="acct-info-top-bar" style="background:linear-gradient(90deg,var(--yellow),transparent)"></div>
+      <div class="acct-info-label">Ngày mở tài khoản</div>
+      <div class="acct-info-val" id="fOpenDate">—</div>
+      <div class="acct-info-sub" id="fOpenDays">—</div>
+    </div>
+  </div>
+
+  <div class="page-footer">TradeDesk v5 · MT4 · MT5 · Firebase Realtime Database · Miễn phí · Không giới hạn tài khoản</div>
+</div>
+
+<!-- ══════════ ADD ACCOUNT MODAL ══════════ -->
+<div class="modal-overlay" id="addModalOverlay">
+  <div class="modal">
+    <button class="close-modal" onclick="closeAddModal()">✕</button>
+    <div class="modal-title">Thêm tài khoản</div>
+    <div class="modal-sub">Subscribe realtime từ Firebase</div>
+    <div id="addFbStatus" class="fb-status disconnected">
+      <div class="fb-dot" style="background:var(--red)"></div>Firebase chưa kết nối
+    </div>
+    <div class="field">
+      <label class="field-label">Login number</label>
+      <input class="field-input" id="mLogin" placeholder="VD: 847291" />
+    </div>
+    <div class="field">
+      <label class="field-label">Tên hiển thị</label>
+      <input class="field-input" id="mName" placeholder="VD: Exness main" />
+    </div>
+    <div class="field">
+      <label class="field-label">Màu thẻ</label>
+      <div class="color-row">
+        <div class="color-opt selected" style="background:var(--cyan)" data-color="var(--cyan)" onclick="selectColor(this)"></div>
+        <div class="color-opt" style="background:var(--green)" data-color="var(--green)" onclick="selectColor(this)"></div>
+        <div class="color-opt" style="background:var(--purple)" data-color="var(--purple)" onclick="selectColor(this)"></div>
+        <div class="color-opt" style="background:var(--yellow)" data-color="var(--yellow)" onclick="selectColor(this)"></div>
+        <div class="color-opt" style="background:var(--red)" data-color="var(--red)" onclick="selectColor(this)"></div>
+      </div>
+    </div>
+    <button class="submit-btn" id="mSubmit" onclick="addAccountFromModal()">Subscribe realtime →</button>
+    <div class="error-box" id="mError"></div>
+    <div class="note-box">EA Bridge phải đang chạy trên MT4/MT5 và push data lên Firebase node <code>accounts/{login}</code></div>
+  </div>
+</div>
+
+<!-- ══════════ SETTINGS MODAL ══════════ -->
+<div class="modal-overlay" id="settingsModalOverlay">
+  <div class="modal">
+    <button class="close-modal" onclick="closeSettings()">✕</button>
+    <div class="modal-title">Cài đặt Firebase</div>
+    <div class="modal-sub">Thay đổi Firebase project</div>
+    <div class="field">
+      <label class="field-label">Database URL</label>
+      <input class="field-input" id="sFbUrl" placeholder="https://your-project.firebasedatabase.app" />
+    </div>
+    <div class="field">
+      <label class="field-label">API Key</label>
+      <input class="field-input" id="sFbApiKey" placeholder="AIzaSy..." />
+    </div>
+    <button class="fb-btn" onclick="saveSettingsConfig()">Lưu cài đặt</button>
+    <div class="error-box" id="sError"></div>
+    <button class="demo-btn" style="margin-top:8px;" onclick="clearAllData()">Xóa tất cả dữ liệu & reset</button>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// CONSTANTS & STATE
+// ════════════════════════════════════════════════════════════
+const STORAGE_KEY='td_v4';
+const COLORS=['var(--cyan)','var(--green)','var(--purple)','var(--yellow)','var(--red)'];
+const SYM_FLAGS={XAUUSD:'XA',EURUSD:'EU',USDJPY:'US',GBPUSD:'GB',BTCUSD:'BT',AUDUSD:'AU',USDCAD:'UC',NZDUSD:'NZ',GBPJPY:'GJ',EURJPY:'EJ'};
+const SYM_COLORS={XAUUSD:'#b8860b',EURUSD:'#003399',USDJPY:'#bc002d',GBPUSD:'#012169',BTCUSD:'#f7931a',AUDUSD:'#00843d',USDCAD:'#d52b1e',NZDUSD:'#00247d',GBPJPY:'#6b0f0f',EURJPY:'#0037a5'};
+const SYMBOLS=['XAUUSD','EURUSD','USDJPY','GBPUSD','BTCUSD','AUDUSD','USDCAD','NZDUSD'];
+
+let db=null, fbConfig=null;
+let accounts=[], activeAccIdx=-1;
+let selectedColor=COLORS[0];
+let demoMode=false, demoInterval=null;
+let equityChartInst=null, symbolChartInst=null, dailyChartInst=null, donutChartInst=null;
+let chartRange='1D', eqType='realtime';
+let histPage=1, histSortKey='closeTime', histSortAsc=false, histAllData=[];
+
+// ════════════════════════════════════════════════════════════
+// CLOCK
+// ════════════════════════════════════════════════════════════
+function updateClock(){ document.getElementById('clock').textContent=new Date().toLocaleTimeString('vi-VN',{hour12:false}); }
+setInterval(updateClock,1000); updateClock();
+
+// ════════════════════════════════════════════════════════════
+// WELCOME / TABS
+// ════════════════════════════════════════════════════════════
+function showWelcome(){ document.getElementById('welcomeOverlay').classList.remove('hidden'); }
+function hideWelcome(){ document.getElementById('welcomeOverlay').classList.add('hidden'); }
+
+function switchSetupTab(name,btn){
+  document.querySelectorAll('.setup-tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.panel-section').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  if(name==='ea') renderEACode();
+}
+
+function selectColor(el){
+  document.querySelectorAll('.color-opt').forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedColor=el.dataset.color;
+}
+
+// ════════════════════════════════════════════════════════════
+// FIREBASE
+// ════════════════════════════════════════════════════════════
+function initFirebase(url,apiKey){
+  try{
+    try{firebase.app().delete();}catch(e){}
+    firebase.initializeApp({apiKey,databaseURL:url});
+    db=firebase.database();
+    fbConfig={url,apiKey};
+    db.ref('.info/connected').on('value',snap=>{ updateFbStatus(snap.val()); });
+    saveFbConfig();
+    return true;
+  }catch(e){ console.error('Firebase init error:',e); return false; }
+}
+
+function updateFbStatus(connected){
+  const notice=document.getElementById('fbNotice');
+  const banner=document.getElementById('fbStatusBanner');
+  const addBanner=document.getElementById('addFbStatus');
+  if(connected){
+    if(notice)notice.classList.add('hidden');
+    if(banner){banner.className='fb-status connected';banner.innerHTML='<div class="fb-dot" style="background:var(--green)"></div>Firebase kết nối thành công · Realtime WebSocket đang hoạt động';}
+    if(addBanner){addBanner.className='fb-status connected';addBanner.innerHTML='<div class="fb-dot" style="background:var(--green)"></div>Firebase sẵn sàng';}
+  } else {
+    if(notice)notice.classList.remove('hidden');
+    if(banner){banner.className='fb-status disconnected';banner.innerHTML='<div class="fb-dot" style="background:var(--red)"></div>Firebase mất kết nối · Đang thử lại...';}
+  }
+}
+
+function saveFbConfig(){ const s=loadStorage(); s.fb=fbConfig; saveStorage(s); }
+
+// ════════════════════════════════════════════════════════════
+// WELCOME ACTIONS
+// ════════════════════════════════════════════════════════════
+async function saveFirebaseConfig(){
+  const url=document.getElementById('fbUrl').value.trim();
+  const apiKey=document.getElementById('fbApiKey').value.trim();
+  const err=document.getElementById('fbError');
+  err.style.display='none';
+  if(!url||!apiKey){err.textContent='⚠️ Vui lòng nhập đầy đủ Database URL và API Key.';err.style.display='block';return;}
+  if(!url.startsWith('https://')||!url.includes('firebasedatabase')){err.textContent='⚠️ Database URL không hợp lệ.';err.style.display='block';return;}
+  const ok=initFirebase(url,apiKey);
+  if(!ok){err.textContent='❌ Không thể khởi tạo Firebase. Kiểm tra lại URL và API Key.';err.style.display='block';return;}
+  document.getElementById('eaUrlHint').textContent=url;
+  const tabs=document.querySelectorAll('.setup-tab');
+  switchSetupTab('account',tabs[1]);
+}
+
+function addAccountFromWelcome(){
+  const login=document.getElementById('accLogin').value.trim();
+  const name=document.getElementById('accName').value.trim();
+  const err=document.getElementById('accError');
+  err.style.display='none';
+  if(!login){err.textContent='⚠️ Vui lòng nhập Login number.';err.style.display='block';return;}
+  if(!db){err.textContent='⚠️ Chưa kết nối Firebase.';err.style.display='block';return;}
+  if(accounts.find(a=>a.login===login)){err.textContent='⚠️ Tài khoản này đã được thêm.';err.style.display='block';return;}
+  _addAccount(login,name||login,selectedColor);
+  document.getElementById('accLogin').value='';
+  document.getElementById('accName').value='';
+  const tabs=document.querySelectorAll('.setup-tab');
+  switchSetupTab('ea',tabs[2]);
+  renderEACode();
+}
+
+function finishSetup(){
+  if(accounts.length===0){alert('Vui lòng thêm ít nhất 1 tài khoản ở tab ②!');return;}
+  hideWelcome();
+}
+
+function loadDemoMode(){
+  demoMode=true;
+  hideWelcome();
+  document.getElementById('fbNotice').innerHTML='🎮 <strong>Demo mode</strong> · Dữ liệu giả · <span style="color:var(--cyan);cursor:pointer;text-decoration:underline;" onclick="showWelcome()">Kết nối Firebase →</span>';
+  loadDemoAccounts();
+}
+
+// ════════════════════════════════════════════════════════════
+// ACCOUNT MANAGEMENT
+// ════════════════════════════════════════════════════════════
+function _addAccount(login,name,color){
+  const acc={id:Date.now()+Math.random(),login,name,color,data:{balance:0,equity:0,margin:0,freeMargin:0,marginLevel:0,floating:0,realized:0,leverage:100,currency:'USD',isDemo:false,broker:'—',server:'—',accountType:'Standard',openPositions:[],history:[],totalTrades:0,wins:0,losses:0,winRate:0,avgWin:0,avgLoss:0,profitFactor:0,maxDrawdown:0,sharpeRatio:0,swap:0,deposit:0,withdrawal:0,openDate:new Date(),equityHistory:[],symbolStats:[],dailyStats:[],longWinRate:0,shortWinRate:0,tradesPerDay:0,bestWin:0,worstLoss:0,rrRatio:1,riskPerTrade:2,lastTs:null},lastUpdated:null,_unsub:null};
+  accounts.push(acc);
+  if(db) resubscribe(acc);
+  renderAccountTabs();
+  setActiveAccount(accounts.length-1);
+  saveAccountsToStorage();
+}
+
+function deleteAccount(idx,e){
+  e.stopPropagation();
+  if(!confirm('Xóa tài khoản này?'))return;
+  if(accounts[idx]._unsub)accounts[idx]._unsub();
+  accounts.splice(idx,1);
+  if(activeAccIdx>=accounts.length)activeAccIdx=accounts.length-1;
+  saveAccountsToStorage();
+  renderAccountTabs();
+  if(activeAccIdx>=0)renderDashboard(accounts[activeAccIdx].data,accounts[activeAccIdx]);
+}
+
+function flashUpdate(idx){ const cards=document.querySelectorAll('.acc-card'); if(cards[idx])cards[idx].classList.add('acc-pulse'); setTimeout(()=>{ if(cards[idx])cards[idx].classList.remove('acc-pulse'); },1000); }
+
+// ════════════════════════════════════════════════════════════
+// BUILD DATA FROM FIREBASE
+// ════════════════════════════════════════════════════════════
+function buildDataFromFirebase(raw,prev,injectedHistory,injectedMeta){
+  const balance=+(raw.balance||0);
+  const equity=+(raw.equity||0);
+  const margin=+(raw.margin||0);
+  const freeMargin=+(raw.freeMargin||0);
+  const floating=+(raw.floating||0);
+  const marginLevel=margin>0?equity/margin*100:0;
+  const positions=(raw.positions||[]).map(p=>({...p,currentPrice:p.openPrice*(1+((Math.random()-.5)*.001)),profit:+(p.profit||0),openTime:p.openTime||'—'}));
+  const history=Array.isArray(injectedHistory)?injectedHistory:[];
+
+  const eqKey='eq_'+raw.login;
+  let prevEq=[];
+  try{ const saved=JSON.parse(localStorage.getItem(eqKey)||'[]'); prevEq=Array.isArray(saved)?saved:[]; }catch(e){ prevEq=[]; }
+  if(prevEq.length>500)prevEq=prevEq.slice(-500);
+  prevEq.push(equity);
+  try{ localStorage.setItem(eqKey,JSON.stringify(prevEq)); }catch(e){}
+
+  const wins=history.filter(t=>(t.profit||0)>0);
+  const losses=history.filter(t=>(t.profit||0)<0);
+  const winRate=history.length>0?+(wins.length/history.length*100).toFixed(1):0;
+  const avgWin=wins.length?+(wins.reduce((s,t)=>s+(t.profit||0),0)/wins.length).toFixed(2):0;
+  const avgLoss=losses.length?+(Math.abs(losses.reduce((s,t)=>s+(t.profit||0),0))/losses.length).toFixed(2):0;
+  const pf=(avgLoss>0&&losses.length>0)?+((wins.length*avgWin)/(losses.length*avgLoss)).toFixed(2):(wins.length>0?999:0);
+  const realized=history.reduce((s,t)=>s+(t.profit||0)+(t.swap||0)+(t.commission||0),0);
+  const longTrades=history.filter(t=>t.type==='BUY');
+  const shortTrades=history.filter(t=>t.type==='SELL');
+  const longWinRate=longTrades.length?+(longTrades.filter(t=>(t.profit||0)>0).length/longTrades.length*100).toFixed(0):0;
+  const shortWinRate=shortTrades.length?+(shortTrades.filter(t=>(t.profit||0)>0).length/shortTrades.length*100).toFixed(0):0;
+
+  let tradesPerDay=0;
+  if(history.length>0){
+    const parseMT5Date=s=>{if(!s||s==='—')return null;const m=s.match(/(\d{4})\.(\d{2})\.(\d{2})/);if(m)return new Date(+m[1],+m[2]-1,+m[3]);return null;};
+    const closeDates=history.map(t=>parseMT5Date(t.closeTime)).filter(Boolean);
+    if(closeDates.length>1){const minD=Math.min(...closeDates.map(d=>d.getTime()));const maxD=Math.max(...closeDates.map(d=>d.getTime()));const days=Math.max(1,(maxD-minD)/86400000);tradesPerDay=+(history.length/days).toFixed(1);}
+  }
+
+  let sharpeRatio=0;
+  if(history.length>=5){
+    const parseMT5Date=s=>{if(!s||s==='—')return null;const m=s.match(/(\d{4})\.(\d{2})\.(\d{2})/);if(m)return`${m[1]}.${m[2]}.${m[3]}`;return null;};
+    const dailyPnl={};
+    history.forEach(t=>{const d=parseMT5Date(t.closeTime);if(!d)return;if(!dailyPnl[d])dailyPnl[d]=0;dailyPnl[d]+=(t.profit||0);});
+    const pnlArr=Object.values(dailyPnl);
+    if(pnlArr.length>=5){const mean=pnlArr.reduce((s,v)=>s+v,0)/pnlArr.length;const std=Math.sqrt(pnlArr.reduce((s,v)=>s+(v-mean)**2,0)/pnlArr.length);sharpeRatio=std>0?+(mean/std*Math.sqrt(252)).toFixed(2):0;}
+  }
+
+  const symbolMap={};history.forEach(t=>{if(!t.symbol)return;if(!symbolMap[t.symbol])symbolMap[t.symbol]=0;symbolMap[t.symbol]+=(t.profit||0);});
+  const symbolStats=Object.entries(symbolMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  const dailyMap={};history.forEach(t=>{if(!t.closeTime||t.closeTime==='—')return;const m=(t.closeTime||'').match(/\d{4}\.(\d{2}\.\d{2})/);const d=m?m[1]:null;if(!d)return;if(!dailyMap[d])dailyMap[d]=0;dailyMap[d]+=(t.profit||0);});
+  const dailyStats=Object.entries(dailyMap).sort((a,b)=>a[0].localeCompare(b[0])).slice(-30).map(([d,p])=>({date:d,profit:+p.toFixed(2)}));
+
+  const meta=injectedMeta||{};
+  const deposit=+(meta.deposit||balance);
+  const withdrawal=+(meta.withdrawal||0);
+
+  let openDate=prev?prev.openDate:new Date(Date.now()-180*86400000);
+  if(meta.accountOpenTime&&meta.accountOpenTime!=='—'){const m2=meta.accountOpenTime.match(/(\d{4})\.(\d{2})\.(\d{2})/);if(m2)openDate=new Date(+m2[1],+m2[2]-1,+m2[3]);}
+
+  const ddBaseline=deposit>0?deposit:balance;
+
+  return{name:raw.name||raw.login||'Trader',balance,equity,margin,freeMargin,marginLevel,floating,realized:+realized.toFixed(2),leverage:+raw.leverage||100,currency:raw.currency||'USD',isDemo:false,broker:raw.broker||detectBroker(raw.server||'').name,server:raw.server||'',accountType:raw.accountType||'Standard',openPositions:positions,history,totalTrades:history.length,wins:wins.length,losses:losses.length,winRate,avgWin,avgLoss,profitFactor:pf,maxDrawdown:calcMaxDD(history,ddBaseline),sharpeRatio,swap:positions.reduce((s,p)=>s+(p.swap||0),0),deposit,withdrawal,openDate,equityHistory:prevEq,symbolStats,dailyStats,longWinRate,shortWinRate,tradesPerDay,bestWin:wins.length?+Math.max(...wins.map(t=>t.profit)).toFixed(2):0,worstLoss:losses.length?+Math.min(...losses.map(t=>t.profit)).toFixed(2):0,rrRatio:avgLoss>0?+(avgWin/avgLoss).toFixed(2):1,riskPerTrade:prev?prev.riskPerTrade:2,lastTs:raw.ts||Date.now()};
+}
+
+// ════════════════════════════════════════════════════════════
+// EA CODE GENERATOR
+// ════════════════════════════════════════════════════════════
+function renderEACode(){
+  const url=(fbConfig&&fbConfig.url)?fbConfig.url:'https://your-project.firebasedatabase.app';
+  document.getElementById('eaUrlHint').textContent=url;
+  const code=`<span class="cm">// TradeDesk v4 — Firebase Bridge EA</span>
+<span class="cm">// Attach vào bất kỳ chart nào trong MT4/MT5</span>
+<span class="kw">#property</span> strict
+
+<span class="kw">input string</span> FB_URL  = <span class="str">"${url}"</span>;
+<span class="kw">input int</span>    INTERVAL = 1000; <span class="cm">// ms</span>
+
+<span class="kw">string</span> login;
+
+<span class="kw">int OnInit</span>(){
+  login = IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN));
+  EventSetMillisecondTimer(INTERVAL);
+  <span class="kw">return</span> INIT_SUCCEEDED;
+}
+<span class="kw">void OnDeinit</span>(<span class="kw">const int</span> r){ EventKillTimer(); }
+<span class="kw">void OnTimer</span>(){ Push(); }
+
+<span class="kw">void</span> Push(){
+  <span class="kw">string</span> pos = <span class="str">"["</span>;
+  <span class="kw">for</span>(<span class="kw">int</span> i=0;i&lt;PositionsTotal();i++){
+    <span class="kw">if</span>(PositionSelectByTicket(PositionGetTicket(i))){
+      <span class="kw">if</span>(i&gt;0) pos+=<span class="str">","</span>;
+      pos+=StringFormat(
+        <span class="str">"{\\\"ticket\\\":%I64d,\\\"symbol\\\":\\\"%s\\\","</span>
+        <span class="str">"\\\"type\\\":\\\"%s\\\",\\\"lots\\\":%.2f,"</span>
+        <span class="str">"\\\"openPrice\\\":%.5f,\\\"profit\\\":%.2f,"</span>
+        <span class="str">"\\\"sl\\\":%.5f,\\\"tp\\\":%.5f}"</span>,
+        PositionGetTicket(i),
+        PositionGetString(POSITION_SYMBOL),
+        PositionGetInteger(POSITION_TYPE)==0?<span class="str">"BUY"</span>:<span class="str">"SELL"</span>,
+        PositionGetDouble(POSITION_VOLUME),
+        PositionGetDouble(POSITION_PRICE_OPEN),
+        PositionGetDouble(POSITION_PROFIT),
+        PositionGetDouble(POSITION_SL),
+        PositionGetDouble(POSITION_TP)
+      );
+    }
+  }
+  pos+=<span class="str">"]"</span>;
+
+  <span class="kw">string</span> json=StringFormat(
+    <span class="str">"{\\\"login\\\":\\\"%s\\\",\\\"balance\\\":%.2f,"</span>
+    <span class="str">"\\\"equity\\\":%.2f,\\\"margin\\\":%.2f,"</span>
+    <span class="str">"\\\"freeMargin\\\":%.2f,\\\"floating\\\":%.2f,"</span>
+    <span class="str">"\\\"leverage\\\":%d,\\\"broker\\\":\\\"%s\\\","</span>
+    <span class="str">"\\\"server\\\":\\\"%s\\\",\\\"currency\\\":\\\"%s\\\","</span>
+    <span class="str">"\\\"ts\\\":%I64d,\\\"positions\\\":%s}"</span>,
+    login,
+    AccountInfoDouble(ACCOUNT_BALANCE),
+    AccountInfoDouble(ACCOUNT_EQUITY),
+    AccountInfoDouble(ACCOUNT_MARGIN),
+    AccountInfoDouble(ACCOUNT_FREEMARGIN),
+    AccountInfoDouble(ACCOUNT_PROFIT),
+    (int)AccountInfoInteger(ACCOUNT_LEVERAGE),
+    AccountInfoString(ACCOUNT_COMPANY),
+    AccountInfoString(ACCOUNT_SERVER),
+    AccountInfoString(ACCOUNT_CURRENCY),
+    TimeTradeServer(),
+    pos
+  );
+
+  <span class="kw">char</span> body[]; StringToCharArray(json,body,0,StringLen(json));
+  <span class="kw">char</span> res[];  <span class="kw">string</span> hdrs;
+  <span class="kw">string</span> url = FB_URL+<span class="str">"/accounts/"</span>+login+<span class="str">".json"</span>;
+  <span class="kw">int</span> r = WebRequest(<span class="str">"PUT"</span>,url,
+    <span class="str">"Content-Type: application/json\\r\\n"</span>,
+    5000,body,res,hdrs);
+  <span class="kw">if</span>(r==-1) Print(<span class="str">"Firebase error: "</span>,GetLastError());
+}`;
+  document.getElementById('eaCode').innerHTML=code;
+}
+
+function copyEA(){
+  const el=document.getElementById('eaCode');
+  navigator.clipboard.writeText(el.innerText).then(()=>{ const btn=document.querySelector('.copy-btn');btn.textContent='Đã copy!';setTimeout(()=>btn.textContent='Copy code',2000); });
+}
+
+// ════════════════════════════════════════════════════════════
+// MODALS
+// ════════════════════════════════════════════════════════════
+function openAddModal(){
+  const s=document.getElementById('addFbStatus');
+  if(db){s.className='fb-status connected';s.innerHTML='<div class="fb-dot" style="background:var(--green)"></div>Firebase đã kết nối · Sẵn sàng subscribe';}
+  else{s.className='fb-status disconnected';s.innerHTML='<div class="fb-dot" style="background:var(--red)"></div>Firebase chưa cấu hình — <span style="color:var(--cyan);cursor:pointer;text-decoration:underline;" onclick="showWelcome()">Cài đặt ngay</span>';}
+  document.getElementById('addModalOverlay').classList.add('open');
+}
+function closeAddModal(){ document.getElementById('addModalOverlay').classList.remove('open'); }
+document.getElementById('addModalOverlay').addEventListener('click',e=>{ if(e.target===e.currentTarget)closeAddModal(); });
+
+function addAccountFromModal(){
+  const login=document.getElementById('mLogin').value.trim();
+  const name=document.getElementById('mName').value.trim();
+  const err=document.getElementById('mError');
+  err.style.display='none';
+  if(!login){err.textContent='⚠️ Nhập Login number.';err.style.display='block';return;}
+  if(accounts.find(a=>a.login===login)){err.textContent='⚠️ TK này đã được thêm.';err.style.display='block';return;}
+  _addAccount(login,name||login,selectedColor);
+  document.getElementById('mLogin').value='';
+  document.getElementById('mName').value='';
+  closeAddModal();
+}
+
+function openSettings(){
+  if(fbConfig){document.getElementById('sFbUrl').value=fbConfig.url||'';document.getElementById('sFbApiKey').value=fbConfig.apiKey||'';}
+  document.getElementById('settingsModalOverlay').classList.add('open');
+}
+function closeSettings(){ document.getElementById('settingsModalOverlay').classList.remove('open'); }
+document.getElementById('settingsModalOverlay').addEventListener('click',e=>{ if(e.target===e.currentTarget)closeSettings(); });
+
+function saveSettingsConfig(){
+  const url=document.getElementById('sFbUrl').value.trim();
+  const apiKey=document.getElementById('sFbApiKey').value.trim();
+  const err=document.getElementById('sError');
+  err.style.display='none';
+  if(!url||!apiKey){err.textContent='⚠️ Điền đầy đủ.';err.style.display='block';return;}
+  const ok=initFirebase(url,apiKey);
+  if(!ok){err.textContent='❌ Firebase init thất bại.';err.style.display='block';return;}
+  accounts.forEach(a=>{ if(a._unsub)a._unsub(); resubscribe(a); });
+  closeSettings();
+}
+
+function resubscribe(acc){
+  if(!db)return;
+  let cachedHistory=[],cachedMeta=null;
+  const rebuild=()=>{
+    const idx=accounts.findIndex(a=>a.login===acc.login);if(idx<0)return;
+    const rawAcc=accounts[idx]._rawAcc;if(!rawAcc)return;
+    const prev=accounts[idx].data;
+    accounts[idx].data=buildDataFromFirebase(rawAcc,prev,cachedHistory,cachedMeta);
+    accounts[idx].lastUpdated=Date.now();flashUpdate(idx);
+    if(idx===activeAccIdx)renderDashboard(accounts[idx].data,accounts[idx]);
+    renderAccountTabs();
+  };
+  const accRef=db.ref('accounts/'+acc.login);
+  const histRef=db.ref('history/'+acc.login);
+  accRef.on('value',snap=>{ const raw=snap.val();if(!raw)return;const idx=accounts.findIndex(a=>a.login===acc.login);if(idx<0)return;accounts[idx]._rawAcc=raw;rebuild(); });
+  histRef.on('value',snap=>{ const histNode=snap.val();if(!histNode)return;let merged=[],meta=null;Object.keys(histNode).sort((a,b)=>{ if(a==='meta')return 1;if(b==='meta')return -1;return+a-+b; }).forEach(k=>{ if(k==='meta'){meta=histNode[k];return;}const chunk=histNode[k];if(Array.isArray(chunk))merged=merged.concat(chunk); });cachedHistory=merged;cachedMeta=meta;rebuild(); });
+  acc._unsub=()=>{ accRef.off();histRef.off(); };
+}
+
+function clearAllData(){
+  if(!confirm('Xóa toàn bộ tài khoản và cài đặt Firebase?'))return;
+  accounts.forEach(a=>{ if(a._unsub)a._unsub(); });
+  accounts=[];
+  localStorage.removeItem(STORAGE_KEY);
+  location.reload();
+}
+
+// ════════════════════════════════════════════════════════════
+// LOCALSTORAGE
+// ════════════════════════════════════════════════════════════
+function loadStorage(){ try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');}catch(e){return {};} }
+function saveStorage(obj){ try{localStorage.setItem(STORAGE_KEY,JSON.stringify(obj));}catch(e){} }
+function saveAccountsToStorage(){ const s=loadStorage();s.accounts=accounts.map(a=>({login:a.login,name:a.name,color:a.color}));saveStorage(s); }
+
+// ════════════════════════════════════════════════════════════
+// RENDER ACCOUNT TABS
+// ════════════════════════════════════════════════════════════
+function detectPlatform(server, name){
+  const s=(server||name||'').toLowerCase();
+  if(s.includes('mt5')||s.includes('-5')||s.includes('meta5')||s.includes('real5')||s.includes('demo5')) return 'MT5';
+  if(s.includes('mt4')||s.includes('-4')||s.includes('meta4')||s.includes('real4')||s.includes('demo4')) return 'MT4';
+  // modern brokers mostly run MT5; treat demo2+ as MT5
+  if(s.includes('demo2')||s.includes('demo3')) return 'MT5';
+  if(s.includes('demo1')) return 'MT4';
+  return 'MT5'; // safe default
+}
+
+function renderAccountTabs(){
+  const row=document.getElementById('accountsRow');
+  row.innerHTML='';
+  accounts.forEach((a,i)=>{
+    const d=a.data;
+    const el=document.createElement('div');
+    el.className='acc-card'+(i===activeAccIdx?' active':'');
+    el.style.setProperty('--acc-color', a.color);
+
+    // Platform
+    const platform=detectPlatform(d.server, a.name);
+    const platCls=platform==='MT4'?'mt4':platform==='MT5'?'mt5':'mt-unk';
+
+    // Badge
+    const badgeCls=demoMode?'b-demo':(a.lastUpdated?'b-real':'b-wait');
+    const badgeTxt=demoMode?'DEMO':(a.lastUpdated?'LIVE':'WAIT');
+
+    // Equity delta
+    const delta=d.equity-d.balance;
+    const deltaSign=delta>=0?'+':'';
+    const deltaCls=delta>=0?'pos':'neg';
+    const eqColor=delta>=0?'var(--green)':'var(--red)';
+
+    // Timestamp
+    const age=a.lastUpdated?Math.floor((Date.now()-a.lastUpdated)/1000):null;
+    let tsHtml;
+    if(age===null){
+      tsHtml=`<div class="acc-ts stale">Chờ EA push data…</div>`;
+    } else if(age<10){
+      tsHtml=`<div class="acc-ts live"><div class="acc-ts-dot"></div>Vừa cập nhật</div>`;
+    } else if(age<60){
+      tsHtml=`<div class="acc-ts">${age}s trước</div>`;
+    } else {
+      tsHtml=`<div class="acc-ts stale">${Math.floor(age/60)}m trước</div>`;
+    }
+
+    const brokerName=d.broker||a.name||'—';
+    const serverName=d.server||'—';
+    const accType=d.accountType||'Standard';
+    const accSub=(d.isDemo?'Demo':'Live')+' · 1:'+(d.leverage||100);
+
+    el.innerHTML=`
+      <div class="acc-top-bar"></div>
+      <button class="acc-del" onclick="deleteAccount(${i},event)" title="Xóa">✕</button>
+      <div class="acc-body">
+        <div class="acc-row1">
+          <span class="acc-login">#${a.login}</span>
+          <span class="acc-platform ${platCls}"><span class="plt-dot"></span>${platform}</span>
+          <span class="acc-badge ${badgeCls}">${badgeTxt}</span>
+        </div>
+        <div class="acc-balance-wrap">
+          <span class="acc-balance" style="color:${a.color}">${fmt(d.balance)}</span><span class="acc-currency">${d.currency||'USD'}</span>
+        </div>
+        <div class="acc-equity-row">
+          <span class="acc-eq-label">Equity</span>
+          <span class="acc-eq-val" style="color:${eqColor}">${fmt(d.equity)}</span>
+          <span class="acc-eq-delta ${deltaCls}">${deltaSign}${fmt(delta)}</span>
+        </div>
+        <div class="acc-divider"></div>
+        <div class="acc-info-grid">
+          <div class="acc-info-cell">
+            <div class="acc-info-label">Broker</div>
+            <div class="acc-info-val">${brokerName}</div>
+            <div class="acc-info-sub">${serverName}</div>
+          </div>
+          <div class="acc-info-cell">
+            <div class="acc-info-label">Loại tài khoản</div>
+            <div class="acc-info-val">${accType}</div>
+            <div class="acc-info-sub">${accSub}</div>
+          </div>
+        </div>
+        ${tsHtml}
+      </div>`;
+    el.onclick=()=>setActiveAccount(i);
+    row.appendChild(el);
+  });
+  const add=document.createElement('div');
+  add.className='acc-add-card';
+  add.innerHTML='<div class="acc-add-icon">＋</div><div class="acc-add-text">Thêm tài khoản</div>';
+  add.onclick=openAddModal;
+  row.appendChild(add);
+}
+
+function setActiveAccount(idx){ activeAccIdx=idx;renderAccountTabs();renderDashboard(accounts[idx].data,accounts[idx]); }
+
+// ════════════════════════════════════════════════════════════
+// RENDER DASHBOARD
+// ════════════════════════════════════════════════════════════
+function renderDashboard(d,acc){
+  const clr=v=>v>=0?'cv-green':'cv-red';
+  const sgn=v=>(v>=0?'+':'')+fmt(v);
+  const g=id=>document.getElementById(id);
+
+  g('sBalance').textContent=fmt(d.balance);
+  g('sBalanceSub').textContent=d.lastTs?`Cập nhật: ${new Date(d.lastTs*1000).toLocaleTimeString('vi-VN')}`:'—';
+  g('sEquity').textContent=fmt(d.equity); g('sEquity').className='stat-value '+clr(d.equity-d.balance);
+  g('sEquitySub').textContent=`Floating: ${sgn(d.floating)}`;
+  g('sMargin').textContent=fmt(d.margin);
+  g('sMarginSub').textContent=`Margin level: ${d.marginLevel>=9999?'∞':d.marginLevel.toFixed(1)+'%'}`;
+  g('sFreeMargin').textContent=fmt(d.freeMargin);
+  g('sFreeMarginSub').textContent='Có thể mở thêm lệnh';
+  g('sFloating').textContent=sgn(d.floating); g('sFloating').className='stat-value '+clr(d.floating);
+  g('sFloatingSub').textContent=`Trên ${d.openPositions.length} lệnh mở`;
+  g('sRealized').textContent=sgn(d.realized); g('sRealized').className='stat-value '+clr(d.realized);
+  g('sRealizedSub').textContent=`Đã bao gồm swap+comm · ${d.totalTrades} lệnh`;
+  g('sLeverage').textContent='1:'+d.leverage;
+  g('sLeverageSub').textContent=d.accountType||'Standard';
+  g('sSwap').textContent=sgn(d.swap||0);
+  g('sSwapSub').textContent='Tổng phí qua đêm';
+
+  // Alert
+  const ml=d.marginLevel;
+  const alertBar=document.getElementById('alertBar');
+  if(ml<200&&ml>0){g('alertText').textContent=`Margin Call cảnh báo: TK #${acc.login} margin level ${ml.toFixed(0)}%`;alertBar.classList.add('show');}
+  else{alertBar.classList.remove('show');}
+
+  // Positions
+  const pl=document.getElementById('positionsList');
+  g('openCount').textContent=d.openPositions.length+' lệnh';
+  if(!d.openPositions.length){
+    pl.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3);font-family:var(--font-mono);font-size:11px;letter-spacing:.5px;">Không có lệnh đang mở</div>';
+  } else {
+    pl.innerHTML=d.openPositions.map(p=>`<div class="pos-item"><div><div class="pos-sym"><span class="pos-badge pb-${p.type.toLowerCase()}">${p.type}</span>${p.symbol}</div><div class="pos-detail">${p.lots} lot · TP:${p.tp>0?p.tp.toFixed(5):'—'} · SL:${p.sl>0?p.sl.toFixed(5):'—'}</div></div><div class="pos-profit ${p.profit>=0?'cv-green':'cv-red'}">${p.profit>=0?'+':''}${fmt(p.profit)}</div></div>`).join('');
+  }
+
+  // Trade stats
+  g('tTotal').textContent=d.totalTrades;
+  g('tWins').textContent=d.wins;
+  g('tLosses').textContent=d.losses;
+  g('tWinRate').textContent=d.winRate+'%';
+  g('tRR').textContent='1:'+(d.rrRatio||1.5);
+  g('tPF').textContent=d.profitFactor||'—';
+  g('tBestWin').textContent=d.bestWin?'+'+fmt(d.bestWin):'—';
+  g('tWorstLoss').textContent=d.worstLoss?'-'+fmt(Math.abs(d.worstLoss)):'—';
+  g('tAvgWin').textContent=d.avgWin?'+'+fmt(d.avgWin):'—';
+  g('tAvgLoss').textContent=d.avgLoss?'-'+fmt(d.avgLoss):'—';
+  g('tDD').textContent='-'+d.maxDrawdown+'%';
+  g('tSharpe').textContent=d.sharpeRatio;
+
+  // Risk
+  const mlPct=Math.min((d.marginLevel>=9999?100:d.marginLevel)/10,100);
+  setBar('rML','rMLBar',d.marginLevel>=9999?'∞':d.marginLevel.toFixed(1)+'%',mlPct,d.marginLevel>200?'var(--green)':d.marginLevel>100?'var(--orange)':'var(--red)');
+  g('rMLSub').textContent='Margin Call: 100% · Stop Out: 50%';
+  setBar('rDD','rDDBar','-'+d.maxDrawdown+'%',Math.min(d.maxDrawdown*2,100),'var(--red)');
+  setBar('rRPT','rRPTBar',(d.riskPerTrade||2)+'%',Math.min((d.riskPerTrade||2)*20,100),'var(--orange)');
+  const overall=d.maxDrawdown<15&&d.marginLevel>300?'THẤP':d.maxDrawdown<25?'TRUNG BÌNH':'CAO';
+  setBar('rOverall','rOverallBar',overall,overall==='THẤP'?30:overall==='TRUNG BÌNH'?60:90,overall==='THẤP'?'var(--green)':overall==='TRUNG BÌNH'?'var(--orange)':'var(--red)');
+
+  // Donut
+  g('donutPct').textContent=d.winRate+'%';
+  g('dLong').textContent=d.longWinRate+'%';
+  g('dShort').textContent=d.shortWinRate+'%';
+  g('dPerDay').textContent=d.tradesPerDay;
+  renderDonut(d.winRate);
+
+  // History
+  histAllData=[...(d.history||[])];
+  const symSel=g('histFilterSym');
+  const syms=[...new Set(histAllData.map(h=>h.symbol).filter(Boolean))].sort();
+  const curSym=symSel.value;
+  symSel.innerHTML='<option value="">Tất cả symbol</option>'+syms.map(s=>`<option value="${s}"${s===curSym?'selected':''}>${s}</option>`).join('');
+  histPage=1;
+  renderHistTable();
+
+  // Info strip (merged footer)
+  const platform=detectPlatform(d.server||'',acc.name||'');
+  const platBadge=`<span style="display:inline-flex;align-items:center;gap:3px;padding:1px 7px 1px 5px;border-radius:20px;font-size:8px;font-weight:800;letter-spacing:1.5px;font-family:var(--font-mono);vertical-align:middle;margin-left:6px;background:${platform==='MT5'?'rgba(0,216,255,.1)':'rgba(255,196,0,.1)'};border:1px solid ${platform==='MT5'?'rgba(0,216,255,.3)':'rgba(255,196,0,.3)'};color:${platform==='MT5'?'var(--cyan)':'var(--yellow)'}"><span style="width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.7;display:inline-block;margin-right:1px;"></span>${platform}</span>`;
+  g('fAccType').innerHTML=(d.accountType||'Standard')+platBadge;
+  g('fAccTypeSub').textContent=(d.isDemo?'Demo account':'Live account')+' · 1:'+(d.leverage||100);
+  g('fBroker').textContent=d.broker||acc.name;
+  g('fServer').textContent=d.server||'—';
+  g('fDeposit').textContent=fmt(d.deposit);
+  g('fDepositSub').innerHTML=`<span class="cv-green">▲ ${fmt(d.deposit)}</span>${d.withdrawal<0?` <span class="cv-red">▼ ${fmt(Math.abs(d.withdrawal))}</span>`:''}`;
+  const od=d.openDate instanceof Date?d.openDate:new Date(d.openDate||Date.now());
+  g('fOpenDate').textContent=od.toLocaleDateString('vi-VN',{month:'short',year:'numeric'});
+  g('fOpenDays').textContent=`Hoạt động ${Math.floor((Date.now()-od)/86400000)} ngày`;
+
+  renderEquityChart(d);
+  renderSymbolChart(d);
+  renderDailyChart(d);
+}
+
+function setBar(labelId,barId,val,pct,color){
+  document.getElementById(labelId).textContent=val;
+  const bar=document.getElementById(barId);
+  bar.style.background=color;bar.style.width='0%';
+  setTimeout(()=>bar.style.width=pct+'%',100);
+}
+
+// ════════════════════════════════════════════════════════════
+// CHARTS
+// ════════════════════════════════════════════════════════════
+const chartDefaults={
+  responsive:true,maintainAspectRatio:false,
+  plugins:{legend:{display:false},tooltip:{backgroundColor:'#0e1628',borderColor:'#1d2d4a',borderWidth:1,titleFont:{family:'Space Mono',size:10},bodyFont:{family:'Space Mono',size:11},titleColor:'#6a89b0',bodyColor:'#c8ddf5',padding:10,cornerRadius:6}},
+  scales:{
+    x:{grid:{color:'rgba(22,32,53,0.7)',drawBorder:false},ticks:{color:'#2d4265',font:{family:'Space Mono',size:9},maxTicksLimit:10,maxRotation:0}},
+    y:{grid:{color:'rgba(22,32,53,0.7)',drawBorder:false},ticks:{color:'#2d4265',font:{family:'Space Mono',size:9},callback:v=>'$'+v.toLocaleString()}}
+  }
+};
+
+function setEqType(t,btn){
+  eqType=t;
+  document.querySelectorAll('#eqTypeTabs .ct-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(activeAccIdx>=0)renderEquityChart(accounts[activeAccIdx].data);
+}
+
+function setChartRange(r,btn){
+  chartRange=r;
+  document.querySelectorAll('#eqRangeTabs .ct-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(activeAccIdx>=0)renderEquityChart(accounts[activeAccIdx].data);
+}
+
+function renderEquityChart(d){
+  const ctx=document.getElementById('equityChart').getContext('2d');
+  if(equityChartInst){equityChartInst.destroy();equityChartInst=null;}
+
+  if(eqType==='history'){
+    const trades=[...(d.history||[])].sort((a,b)=>{const ta=(a.closeTime||'').replace(/[^0-9]/g,'');const tb=(b.closeTime||'').replace(/[^0-9]/g,'');return ta.localeCompare(tb);});
+    if(!trades.length){ctx.canvas.style.opacity='.3';return;}
+    ctx.canvas.style.opacity='1';
+    const now=Date.now();
+    const rangeMs={'1D':86400000,'1W':7*86400000,'1M':30*86400000,'3M':90*86400000,'ALL':Infinity}[chartRange]||Infinity;
+    const parseMT5Ts=s=>{if(!s||s==='—')return 0;const m=s.match(/(\d{4})\.(\d{2})\.(\d{2})\s+(\d{2}):(\d{2})/);if(m)return new Date(+m[1],+m[2]-1,+m[3],+m[4],+m[5]).getTime();return 0;};
+    const deposit=d.deposit||d.balance;let cur=deposit;
+    const points=[{t:0,v:cur,label:'Start'}];
+    trades.forEach(t=>{const ts=parseMT5Ts(t.closeTime);if(now-ts>rangeMs)return;cur+=(t.profit||0)+(t.swap||0)+(t.commission||0);points.push({t:ts,v:+cur.toFixed(2),label:t.closeTime||'—'});});
+    if(points.length<2){ctx.canvas.style.opacity='.3';return;}
+    const labels=points.map(p=>p.label==='Start'?'Start':p.label.slice(5,10)+' '+p.label.slice(11,16));
+    const vals=points.map(p=>p.v);
+    const color=vals[vals.length-1]>=vals[0]?'#00f5b0':'#ff3060';
+    equityChartInst=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Balance',data:vals,borderColor:color,borderWidth:1.5,pointRadius:0,fill:true,backgroundColor:ctx2=>{const g=ctx2.chart.ctx.createLinearGradient(0,0,0,200);g.addColorStop(0,color+'3a');g.addColorStop(1,color+'00');return g;},tension:0.25}]},options:{...chartDefaults}});
+  } else {
+    const pts=d.equityHistory||[];
+    if(!pts.length){ctx.canvas.style.opacity='.3';return;}
+    ctx.canvas.style.opacity='1';
+    const intervalMs=5000;
+    const rangeMs={'1D':86400000,'1W':7*86400000,'1M':30*86400000,'3M':90*86400000,'ALL':Infinity}[chartRange]||Infinity;
+    const maxPts=Math.min(Math.ceil(rangeMs/intervalMs),pts.length);
+    const sliced=pts.slice(-maxPts);
+    const nowMs=Date.now();
+    const labels=sliced.map((_,i)=>{const ms=nowMs-(sliced.length-1-i)*intervalMs;const dt=new Date(ms);if(chartRange==='1D')return dt.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});return dt.toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'})+' '+dt.toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});});
+    equityChartInst=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Equity',data:sliced,borderColor:'#00f5b0',borderWidth:1.5,pointRadius:0,fill:true,backgroundColor:ctx2=>{const g=ctx2.chart.ctx.createLinearGradient(0,0,0,200);g.addColorStop(0,'rgba(0,245,176,0.22)');g.addColorStop(1,'rgba(0,245,176,0)');return g;},tension:0.3},{label:'Balance',data:Array(sliced.length).fill(d.balance),borderColor:'rgba(0,216,255,.4)',borderWidth:1,borderDash:[5,4],pointRadius:0,fill:false}]},options:{...chartDefaults}});
+  }
+}
+
+function renderDonut(wr){
+  const ctx=document.getElementById('donutChart').getContext('2d');
+  if(donutChartInst)donutChartInst.destroy();
+  donutChartInst=new Chart(ctx,{type:'doughnut',data:{datasets:[{data:[wr,100-wr],backgroundColor:['#00f5b0','#162035'],borderWidth:0,hoverOffset:0}]},options:{responsive:false,cutout:'74%',plugins:{legend:{display:false},tooltip:{enabled:false}}}});
+}
+
+function renderSymbolChart(d){
+  const ctx=document.getElementById('symbolChart').getContext('2d');
+  if(symbolChartInst)symbolChartInst.destroy();
+  const stats=d.symbolStats||[];if(!stats.length)return;
+  symbolChartInst=new Chart(ctx,{type:'bar',data:{labels:stats.map(s=>s[0]),datasets:[{data:stats.map(s=>+s[1].toFixed(2)),backgroundColor:stats.map(s=>s[1]>=0?'rgba(0,245,176,.65)':'rgba(255,48,96,.65)'),borderColor:stats.map(s=>s[1]>=0?'#00f5b0':'#ff3060'),borderWidth:1,borderRadius:4}]},options:{...chartDefaults}});
+}
+
+function renderDailyChart(d){
+  const ctx=document.getElementById('dailyChart').getContext('2d');
+  if(dailyChartInst)dailyChartInst.destroy();
+  const stats=d.dailyStats||[];if(!stats.length)return;
+  dailyChartInst=new Chart(ctx,{type:'bar',data:{labels:stats.map(s=>s.date),datasets:[{data:stats.map(s=>s.profit),backgroundColor:stats.map(s=>s.profit>=0?'rgba(0,216,255,.55)':'rgba(255,48,96,.65)'),borderColor:stats.map(s=>s.profit>=0?'#00d8ff':'#ff3060'),borderWidth:1,borderRadius:4}]},options:{...chartDefaults}});
+}
+
+// ════════════════════════════════════════════════════════════
+// HISTORY TABLE
+// ════════════════════════════════════════════════════════════
+function parseMT5Ts(s){if(!s||s==='—')return 0;const m=s.match(/(\d{4})\.(\d{2})\.(\d{2})\s+(\d{2}):(\d{2})/);if(m)return new Date(+m[1],+m[2]-1,+m[3],+m[4],+m[5]).getTime();return 0;}
+function calcDuration(openTime,closeTime){const o=parseMT5Ts(openTime),c=parseMT5Ts(closeTime);if(!o||!c)return{ms:0,str:'—'};const ms=c-o;const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000);if(h>=24){const d=Math.floor(h/24);return{ms,str:d+'d '+(h%24)+'h'};}return{ms,str:h+'h '+m+'m'};}
+
+function sortHist(key){
+  if(histSortKey===key)histSortAsc=!histSortAsc;
+  else{histSortKey=key;histSortAsc=key!=='closeTime';}
+  histPage=1;renderHistTable();
+}
+
+function renderHistTable(){
+  const g=id=>document.getElementById(id);
+  const sym=(g('histFilterSym')||{}).value||'';
+  const type=(g('histFilterType')||{}).value||'';
+  const result=(g('histFilterResult')||{}).value||'';
+  const perPage=+((g('histPerPage')||{}).value||20);
+
+  let rows=histAllData.filter(h=>{
+    if(sym&&h.symbol!==sym)return false;
+    if(type&&h.type!==type)return false;
+    if(result==='win'&&(h.profit||0)<=0)return false;
+    if(result==='loss'&&(h.profit||0)>=0)return false;
+    return true;
+  });
+
+  const totalPnl=rows.reduce((s,h)=>(s+(h.profit||0)+(h.swap||0)+(h.commission||0)),0);
+  const wRows=rows.filter(h=>(h.profit||0)>0);
+  const lRows=rows.filter(h=>(h.profit||0)<0);
+  const avgDurMs=rows.length?rows.reduce((s,h)=>s+calcDuration(h.openTime,h.closeTime).ms,0)/rows.length:0;
+  const avgDurStr=avgDurMs?(avgDurMs>=86400000?Math.floor(avgDurMs/86400000)+'d '+Math.floor((avgDurMs%86400000)/3600000)+'h':Math.floor(avgDurMs/3600000)+'h '+Math.floor((avgDurMs%3600000)/60000)+'m'):'—';
+
+  g('histSummaryBar').innerHTML=`
+    <div class="hs-item"><div class="hs-label">Tổng lệnh</div><div class="hs-val cv-cyan">${rows.length}</div></div>
+    <div class="hs-item"><div class="hs-label">Lãi/Lỗ ròng</div><div class="hs-val ${totalPnl>=0?'cv-green':'cv-red'}">${totalPnl>=0?'+':''}${fmt(totalPnl)}</div></div>
+    <div class="hs-item"><div class="hs-label">Thắng / Thua</div><div class="hs-val"><span class="cv-green">${wRows.length}</span> / <span class="cv-red">${lRows.length}</span></div></div>
+    <div class="hs-item"><div class="hs-label">Win rate</div><div class="hs-val cv-yellow">${rows.length?+(wRows.length/rows.length*100).toFixed(1):0}%</div></div>
+    <div class="hs-item"><div class="hs-label">Giữ TB</div><div class="hs-val cv-muted">${avgDurStr}</div></div>`;
+
+  const k=histSortKey;
+  rows.sort((a,b)=>{
+    let va,vb;
+    if(k==='closeTime'||k==='openTime'){va=parseMT5Ts(a[k]);vb=parseMT5Ts(b[k]);}
+    else if(k==='duration'){va=calcDuration(a.openTime,a.closeTime).ms;vb=calcDuration(b.openTime,b.closeTime).ms;}
+    else{va=+(a[k]||0);vb=+(b[k]||0);}
+    return histSortAsc?va-vb:vb-va;
+  });
+
+  ['ticket','symbol','lots','swap','commission','profit','closeTime','duration'].forEach(k=>{
+    const sp=g('sh_'+k);
+    if(sp)sp.textContent=histSortKey===k?(histSortAsc?'↑':'↓'):'';
+  });
+
+  g('histCount').textContent=`${rows.length} / ${histAllData.length} lệnh`;
+
+  const totalPages=Math.max(1,Math.ceil(rows.length/perPage));
+  if(histPage>totalPages)histPage=totalPages;
+  const start=(histPage-1)*perPage;
+  const page=rows.slice(start,start+perPage);
+
+  g('histTable').innerHTML=page.length?page.map(h=>{
+    const dur=calcDuration(h.openTime,h.closeTime).str;
+    const net=(h.profit||0)+(h.swap||0)+(h.commission||0);
+    return`<tr>
+      <td style="color:var(--text2);font-size:10px">${h.ticket}</td>
+      <td><div class="sym-chip"><div class="sym-flag" style="background:${SYM_COLORS[h.symbol]||'#1d2d4a'}">${SYM_FLAGS[h.symbol]||h.symbol.slice(0,2)}</div><strong>${h.symbol}</strong></div></td>
+      <td><span class="pos-badge pb-${(h.type||'').toLowerCase()}">${h.type||'—'}</span></td>
+      <td>${(h.lots||0).toFixed(2)}</td>
+      <td style="font-size:10px;color:var(--text2)">${(h.openPrice||0).toFixed(5)}</td>
+      <td style="font-size:10px;color:var(--text2)">${(h.closePrice||0).toFixed(5)}</td>
+      <td style="color:${(h.sl||0)>0?'var(--red)':'var(--text3)'};font-size:10px">${(h.sl||0)>0?h.sl.toFixed(5):'—'}</td>
+      <td style="color:${(h.tp||0)>0?'var(--green)':'var(--text3)'};font-size:10px">${(h.tp||0)>0?h.tp.toFixed(5):'—'}</td>
+      <td style="color:var(--text2)">${(h.swap||0).toFixed(2)}</td>
+      <td style="color:var(--text2)">${(h.commission||0).toFixed(2)}</td>
+      <td class="${net>=0?'cv-green':'cv-red'}" style="font-weight:700">${net>=0?'+':''}${fmt(net)}</td>
+      <td style="color:var(--text2);font-size:10px">${h.closeTime||'—'}</td>
+      <td style="color:var(--text3);font-size:10px">${dur}</td>
+    </tr>`;
+  }).join(''):`<tr><td colspan="13" style="text-align:center;padding:30px;color:var(--text3);font-family:var(--font-mono);font-size:11px;letter-spacing:.5px;">Không có lệnh nào khớp bộ lọc</td></tr>`;
+
+  renderPagination(totalPages,perPage);
+}
+
+function renderPagination(totalPages,perPage){
+  const pg=document.getElementById('histPagination');
+  if(totalPages<=1){pg.innerHTML='';return;}
+  let html=`<button class="pg-btn" onclick="gotoPage(${histPage-1})" ${histPage<=1?'disabled':''}>‹</button>`;
+  const pages=[];
+  if(totalPages<=7){for(let i=1;i<=totalPages;i++)pages.push(i);}
+  else{pages.push(1);if(histPage>3)pages.push('…');for(let i=Math.max(2,histPage-1);i<=Math.min(totalPages-1,histPage+1);i++)pages.push(i);if(histPage<totalPages-2)pages.push('…');pages.push(totalPages);}
+  pages.forEach(p=>{
+    if(p==='…')html+=`<span class="pg-ellipsis">…</span>`;
+    else html+=`<button class="pg-btn${p===histPage?' active':''}" onclick="gotoPage(${p})">${p}</button>`;
+  });
+  html+=`<button class="pg-btn" onclick="gotoPage(${histPage+1})" ${histPage>=totalPages?'disabled':''}>›</button>`;
+  html+=`<span style="margin-left:8px;font-size:10px;color:var(--text3);font-family:var(--font-mono);">Trang</span>
+  <input type="number" min="1" max="${totalPages}" value="${histPage}" onchange="gotoPage(+this.value)"
+    style="width:44px;background:var(--surface3);border:1px solid var(--border);color:var(--text);font-family:var(--font-mono);font-size:10px;padding:4px 6px;border-radius:5px;text-align:center;outline:none;">
+  <span style="font-size:10px;color:var(--text3);font-family:var(--font-mono);">/ ${totalPages}</span>`;
+  pg.innerHTML=html;
+}
+
+function gotoPage(p){
+  const perPage=+((document.getElementById('histPerPage')||{}).value||20);
+  const totalPages=Math.max(1,Math.ceil(histAllData.length/perPage));
+  histPage=Math.max(1,Math.min(p,totalPages));
+  renderHistTable();
+  document.getElementById('histTable').closest('.card').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// ════════════════════════════════════════════════════════════
+// DEMO MODE
+// ════════════════════════════════════════════════════════════
+function rnd(a,b){return a+Math.random()*(b-a);}
+function rndInt(a,b){return Math.floor(rnd(a,b));}
+
+function generateMockData(login,name){
+  const balance=rnd(5000,60000);const floating=(Math.random()-.35)*rnd(200,1200);const equity=balance+floating;const marginPct=rnd(.04,.2);const margin=equity*marginPct;const freeMargin=equity-margin;const marginLevel=equity/margin*100;const realized=(Math.random()-.25)*balance*.3;const totalTrades=rndInt(60,350);const winPct=rnd(.48,.72);const wins=Math.floor(totalTrades*winPct);const losses=totalTrades-wins;const avgWin=rnd(80,300);const avgLoss=rnd(40,160);
+  const history=Array.from({length:30},(_,i)=>{const sym=SYMBOLS[rndInt(0,SYMBOLS.length)];const profit=Math.random()<winPct?rnd(20,avgWin*1.5):-rnd(20,avgLoss*1.5);const base=symBase(sym);return{ticket:rndInt(10000000,19000000)-i*1000,symbol:sym,type:Math.random()>.5?'BUY':'SELL',lots:+(rnd(.01,1)).toFixed(2),openPrice:base,closePrice:base+(profit>0?1:-1)*base*.003,sl:0,tp:0,swap:+(rnd(-4,0)).toFixed(2),commission:+(rnd(-5,0)).toFixed(2),profit:+profit.toFixed(2),openTime:fmtDT(new Date(Date.now()-rnd(24,720)*3600000)),closeTime:fmtDT(new Date(Date.now()-rnd(1,24)*3600000))};}).sort((a,b)=>b.ticket-a.ticket);
+  const symMap={};history.forEach(t=>{if(!symMap[t.symbol])symMap[t.symbol]=0;symMap[t.symbol]+=t.profit;});
+  const symStats=Object.entries(symMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const dayMap={};history.forEach(t=>{const d=(t.closeTime||'').slice(0,5)||'—';if(!dayMap[d])dayMap[d]=0;dayMap[d]+=t.profit;});
+  const dayStats=Object.entries(dayMap).slice(0,12).map(([d,p])=>({date:d,profit:+p.toFixed(2)}));
+  const pts=[];let cur=balance*.8;for(let i=0;i<60;i++){cur+=rnd(-200,300)*(cur/balance);if(cur<balance*.4)cur=balance*.45;pts.push(+cur.toFixed(2));}pts.push(balance);
+  return{name:name||'Demo Trader',balance:+balance.toFixed(2),equity:+equity.toFixed(2),margin:+margin.toFixed(2),freeMargin:+freeMargin.toFixed(2),marginLevel:+marginLevel.toFixed(1),floating:+floating.toFixed(2),realized:+realized.toFixed(2),leverage:[100,200,500,1000][rndInt(0,4)],currency:'USD',isDemo:true,broker:'Demo Broker',server:'Demo-Server',accountType:'Standard',openPositions:Array.from({length:rndInt(0,5)},()=>{const sym=SYMBOLS[rndInt(0,6)];const type=Math.random()>.5?'BUY':'SELL';const base=symBase(sym);return{ticket:rndInt(10000000,19999999),symbol:sym,type,lots:+(rnd(.01,2)).toFixed(2),openPrice:base,currentPrice:base*(1+rnd(-.003,.003)),sl:Math.random()>.4?base*(type==='BUY'?.988:.012):0,tp:Math.random()>.4?base*(type==='BUY'?1.02:.98):0,swap:+(rnd(-8,0)).toFixed(2),profit:+(rnd(-200,300)).toFixed(2),openTime:fmtDT(new Date(Date.now()-rnd(1,48)*3600000))};}).map(p=>({...p,profit:+((p.currentPrice-p.openPrice)*(p.type==='BUY'?1:-1)*(p.symbol==='XAUUSD'?100:p.symbol==='USDJPY'?700:100000)*p.lots).toFixed(2)})),history,totalTrades,wins,losses,winRate:+(winPct*100).toFixed(1),avgWin:+avgWin.toFixed(2),avgLoss:+avgLoss.toFixed(2),profitFactor:+((wins*avgWin)/(losses*avgLoss)).toFixed(2),maxDrawdown:+(rnd(4,22)).toFixed(1),sharpeRatio:+(rnd(.8,2.5)).toFixed(2),swap:+(rnd(-30,0)).toFixed(2),deposit:+balance.toFixed(2),withdrawal:0,openDate:new Date(Date.now()-rndInt(90,500)*86400000),equityHistory:pts,symbolStats:symStats,dailyStats:dayStats,longWinRate:rndInt(55,78),shortWinRate:rndInt(42,65),tradesPerDay:+(rnd(2,8)).toFixed(1),bestWin:+Math.max(...history.map(h=>h.profit)).toFixed(2),worstLoss:+Math.min(...history.map(h=>h.profit)).toFixed(2),rrRatio:+(avgWin/avgLoss).toFixed(2),riskPerTrade:+(rnd(.5,3)).toFixed(1),lastTs:null};
+}
+
+function mutateDemoData(d){
+  d.floating+=rnd(-60,90);d.equity=d.balance+d.floating;
+  d.openPositions.forEach(p=>{p.profit+=rnd(-25,35);p.currentPrice*=(1+rnd(-.001,.001));});
+  d.margin=d.equity*rnd(.04,.2);d.freeMargin=d.equity-d.margin;d.marginLevel=d.equity/d.margin*100;
+  if(d.equityHistory.length>200)d.equityHistory.shift();
+  d.equityHistory.push(+d.equity.toFixed(2));
+}
+
+function loadDemoAccounts(){
+  if(demoInterval)clearInterval(demoInterval);
+  const list=[
+    {login:'847291',name:'Exness · XAUUSD',color:'var(--cyan)',server:'Exness-MT5Real8',broker:'Exness Ltd.',accountType:'Raw Spread'},
+    {login:'123587',name:'IC Markets · ECN',color:'var(--green)',server:'ICMarketsSC-MT5-3',broker:'IC Markets Global',accountType:'Raw Spread'},
+    {login:'109034',name:'JustMarkets · Std',color:'var(--yellow)',server:'JustMarkets-Demo2',broker:'Just Global Markets Ltd.',accountType:'Standard'}
+  ];
+  list.forEach(item=>{
+    const mock=generateMockData(item.login,item.name);
+    mock.server=item.server; mock.broker=item.broker; mock.accountType=item.accountType;
+    accounts.push({id:Date.now()+Math.random(),login:item.login,name:item.name,color:item.color,data:mock,lastUpdated:Date.now(),_unsub:null});
+  });
+  renderAccountTabs();setActiveAccount(0);
+  demoInterval=setInterval(()=>{
+    accounts.forEach((a,i)=>{mutateDemoData(a.data);a.lastUpdated=Date.now();});
+    if(activeAccIdx>=0)renderDashboard(accounts[activeAccIdx].data,accounts[activeAccIdx]);
+    renderAccountTabs();
+  },1000);
+}
+
+// ════════════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════════════
+function fmt(v,d=2){return'$'+(Math.abs(v)||0).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});}
+function fmtDT(d){return d.toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}
+function scrollToRisk(){document.getElementById('riskSection').scrollIntoView({behavior:'smooth'});}
+function symBase(sym){const m={XAUUSD:2330,EURUSD:1.087,USDJPY:151.5,GBPUSD:1.265,BTCUSD:68000,AUDUSD:0.643,USDCAD:1.362,NZDUSD:0.589,GBPJPY:191,EURJPY:164};return(m[sym]||1)*(1+rnd(-.005,.005));}
+function detectBroker(s){s=s.toLowerCase();if(s.includes('exness'))return{name:'Exness',type:'Standard'};if(s.includes('icmarket'))return{name:'IC Markets',type:'Raw Spread'};if(s.includes('vantage'))return{name:'Vantage',type:'ECN'};if(s.includes('just'))return{name:'JustMarkets',type:'Standard+'};return{name:'Unknown',type:'Standard'};}
+
+function calcMaxDD(trades,baseline){
+  if(!trades.length)return 0;
+  let peak=baseline,maxDD=0,cur=baseline;
+  const sorted=[...trades].sort((a,b)=>{const ta=(a.closeTime||'').replace(/[^0-9]/g,'');const tb=(b.closeTime||'').replace(/[^0-9]/g,'');return ta.localeCompare(tb);});
+  sorted.forEach(t=>{cur+=(t.profit||0);if(cur>peak)peak=cur;const dd=peak>0?(peak-cur)/peak*100:0;if(dd>maxDD)maxDD=dd;});
+  return+maxDD.toFixed(1);
+}
+
+// ════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════
+(function init(){
+  const saved=loadStorage();
+  if(saved.fb&&saved.fb.url&&saved.fb.apiKey){
+    const ok=initFirebase(saved.fb.url,saved.fb.apiKey);
+    if(ok){
+      document.getElementById('fbNotice').classList.add('hidden');
+      document.getElementById('sFbUrl')&&(document.getElementById('sFbUrl').value=saved.fb.url);
+      document.getElementById('sFbApiKey')&&(document.getElementById('sFbApiKey').value=saved.fb.apiKey);
+    }
+  }
+  if(saved.accounts&&saved.accounts.length>0){hideWelcome();saved.accounts.forEach(s=>{_addAccount(s.login,s.name,s.color);});}
+  else{showWelcome();}
+})();
+</script>
+</body>
+</html>
